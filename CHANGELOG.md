@@ -54,6 +54,8 @@
 - Containers get a `--hostname` of the sandbox name and an `asb.sandbox`
   label.
 - `--json` output for `ls`, `show`, and `config get`.
+- Shell completion for bash, zsh, and fish (`asb completion <shell>`),
+  covering commands, options, sandbox and image names, and config keys.
 - Tests (vitest, with a fake docker), linting, and CI.
 
 ### Removed
