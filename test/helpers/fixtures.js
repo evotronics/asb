@@ -43,6 +43,63 @@ export async function writeFiles(dir, files) {
   }
 }
 
+export const FAKE_DOCKER = path.join(import.meta.dirname, 'fake-docker.js');
+
+/**
+ * Create an isolated environment: a home directory, an asb config
+ * directory using the fake docker, and sandbox files.
+ *
+ * @param {object} [options] - Options.
+ * @param {string} [options.config] - Extra config.yaml text.
+ * @param {object} [options.sandboxes] - Map of name to sandbox file text.
+ * @param {object} [options.files] - Map of path relative to the home
+ *   directory to content.
+ *
+ * @returns {Promise<object>} `{dir, home, configDir, env, calls(),
+ *   setContainers(list), setExit(code)}`; `calls()` returns the fake
+ *   docker's argv arrays.
+ */
+export async function createEnv({
+  config = '', sandboxes = {}, files = {}
+} = {}) {
+  const dir = await tempDir();
+  const home = path.join(dir, 'home');
+  const configDir = path.join(dir, 'config');
+  const dockerDir = path.join(dir, 'docker');
+  await fs.mkdir(home, {recursive: true});
+  await fs.mkdir(dockerDir);
+  await writeFiles(configDir, {
+    'config.yaml': `version: 1\nsettings:\n  docker: ${FAKE_DOCKER}\n` +
+      config,
+    ...Object.fromEntries(Object.entries(sandboxes).map(
+      ([name, text]) => [`sandboxes/${name}.yaml`, text]))
+  });
+  await writeFiles(home, files);
+  return {
+    dir,
+    home,
+    configDir,
+    env: {
+      HOME: home,
+      ASB_CONFIG_DIR: configDir,
+      XDG_DATA_HOME: path.join(dir, 'data'),
+      FAKE_DOCKER_DIR: dockerDir
+    },
+    async calls() {
+      const text = await fs.readFile(path.join(dockerDir, 'calls.log'),
+        'utf8').catch(() => '');
+      return text.split('\n').filter(Boolean).map(line => JSON.parse(line));
+    },
+    async setContainers(list) {
+      await fs.writeFile(path.join(dockerDir, 'containers.json'),
+        JSON.stringify(list));
+    },
+    async setExit(code) {
+      await fs.writeFile(path.join(dockerDir, 'exit'), String(code));
+    }
+  };
+}
+
 /**
  * Run the CLI in-process and capture output.
  *
