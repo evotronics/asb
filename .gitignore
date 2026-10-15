@@ -2,16 +2,23 @@
 logs
 *.log
 
+# Node
+node_modules/
+coverage/
+
 # Misc
 dist
 dist-ssr
 *.local
+.cache
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
+.project
+.settings
 *.suo
 *.ntvs*
 *.njsproj
@@ -20,6 +27,7 @@ dist-ssr
 *~
 \#*\#
 .#*
+TAGS
 
 # Claude Code
 .claude/
