@@ -1,0 +1,60 @@
+{
+  "name": "@evotronics/asb",
+  "version": "0.1.0-0",
+  "private": true,
+  "description": "Anything Sandbox: run agents or untrusted code in named, hardened Docker containers.",
+  "license": "BSD-3-Clause",
+  "author": "David I. Lehn <dil@lehn.org>",
+  "homepage": "https://github.com/evotronics/asb#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evotronics/asb.git"
+  },
+  "bugs": {
+    "url": "https://github.com/evotronics/asb/issues"
+  },
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "asb": "bin/asb.js",
+    "anything-sandbox": "bin/asb.js"
+  },
+  "files": [
+    "bin/",
+    "images/",
+    "lib/",
+    "schemas/"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "keywords": [
+    "sandbox",
+    "docker",
+    "container",
+    "agent",
+    "cli"
+  ],
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "commander": "^15.0.0",
+    "diff": "^9.0.0",
+    "picocolors": "^1.1.1",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@digitalbazaar/eslint-config": "^9.0.0",
+    "eslint": "^10.12.0",
+    "vitest": "^5.0.5"
+  }
+}
