@@ -55,7 +55,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
 
 # Create the sandbox user with a configurable name / uid / gid so files created
 # in the container land on the host owned by the invoking user. These are
-# supplied by `asb build` (defaults match a typical first user).
+# supplied by `asb build` (settings user, uid, gid; defaults match a typical
+# first user).
 ARG USERNAME=agent
 ARG UID=1000
 ARG GID=1000
