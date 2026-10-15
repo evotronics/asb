@@ -230,7 +230,8 @@ test/                 # vitest: unit tests of argv building; CLI tests with a fa
    `show`, `edit`, `config`.
 4. ✅ **Switch over**: remove the shell script, move the Dockerfile to
    `images/default/`, README, CHANGELOG.
-5. **Polish**: shell completion; publish `@evotronics/asb`.
+5. **Polish**: ✅ shell completion; publish `@evotronics/asb` after
+   real-world use (keep `"private": true` until then).
 6. **Future**:
    - **Network allowlists.** `network: {allow: [github.com,
      registry.npmjs.org]}`: put the container on an `--internal` Docker

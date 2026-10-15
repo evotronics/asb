@@ -56,6 +56,7 @@ asb [global options] <command> [options] [args...]
 | `edit [name]` | Open the sandbox's file in `$VISUAL`/`$EDITOR`, then validate it |
 | `build [images...]` | Build images (`--no-cache`, `--pull`); default: the current sandbox's image |
 | `config get\|set\|unset\|path\|validate\|edit` | Settings, defaults, and images in `config.yaml` |
+| `completion bash\|zsh\|fish` | Print a shell completion script |
 | `start [name]` / `up` | Start the container (detached, `--rm`) |
 | `stop [names...]` / `down` | Stop containers |
 | `restart [name]` | Stop if running, then start (to apply config changes) |
@@ -220,6 +221,16 @@ mounts scoped to exactly what the sandbox should touch. For network egress
 control, use `network: none`, or a custom Docker network with an egress
 firewall or proxy (built-in allowlists are planned, see
 [PLAN.md](PLAN.md)).
+
+## Shell completion
+
+Completes commands, options, sandbox and image names, and config keys:
+
+```sh
+eval "$(asb completion bash)"                         # in ~/.bashrc
+source <(asb completion zsh)                          # in ~/.zshrc, after compinit
+asb completion fish > ~/.config/fish/completions/asb.fish
+```
 
 ## Exit codes
 
