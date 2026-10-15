@@ -154,14 +154,26 @@ the next time you (or `mpm status`) run git on the host. asb mounts
 ```yaml
 protect:              # relative to the workspace; * matches one name
   - .mpm
+  - .git/config
   - .git/hooks
+  - '*/.git/config'
   - '*/.git/hooks'
-  # - '*/.git/config' # stricter; breaks e.g. creating tracking branches
 ```
 
-The list above is the default. Paths are expanded when the container starts,
-so repos cloned later are not covered until a restart. Only existing paths
-are mounted.
+✅ The list above is the default. Protecting hooks alone is not enough,
+since `.git/config` can point `core.hooksPath` anywhere. A read-only
+`.git/config` makes git commands that write config fail inside the
+sandbox (`git remote add`, `git push -u`, `git branch -u`); set your own
+`protect` list (for example `[.mpm]`) to loosen this for trusted agents.
+Paths are expanded when the container starts, so repos cloned later are
+not covered until a restart. Only existing paths are mounted; symlinks
+can't be covered by a mount and are reported.
+
+This is defense in depth, not a boundary: it stops casual or accidental
+changes and naive prompt injection, but a determined process can still
+rename a repo directory and create a new one in its place. After running
+truly untrusted code, review the workspace before running host tools in
+it.
 
 ## 7. CLI
 

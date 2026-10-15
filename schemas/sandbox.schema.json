@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sandbox.schema.json",
+  "title": "asb sandbox (~/.config/asb/sandboxes/NAME.yaml)",
+  "description": "A sandbox definition. The same properties are used for `defaults` in config.yaml.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "description": {
+      "description": "What the sandbox is for, shown by `asb ls`.",
+      "$ref": "#/definitions/text"
+    },
+    "image": {
+      "description": "Image name, from `images` in config.yaml (default: default).",
+      "$ref": "#/definitions/name"
+    },
+    "home": {
+      "description": "Host directory mounted as the container's HOME (default: ~/.local/share/asb/homes/NAME).",
+      "$ref": "#/definitions/hostPath"
+    },
+    "workspace": {
+      "description": "Host directory mounted at ~/workspace in the container.",
+      "$ref": "#/definitions/hostPath"
+    },
+    "workdir": {
+      "description": "Working directory in the container (default: ~/workspace with a workspace, else ~).",
+      "$ref": "#/definitions/containerPath"
+    },
+    "mounts": {
+      "description": "Extra bind mounts.",
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "description": "SOURCE:TARGET or SOURCE:TARGET:ro",
+            "type": "string",
+            "pattern": "^(~|~/[^:]*|/[^:]*):[^:]+(:(ro|rw))?$"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "target"],
+            "properties": {
+              "source": {"$ref": "#/definitions/hostPath"},
+              "target": {"$ref": "#/definitions/containerPath"},
+              "readonly": {"type": "boolean"}
+            }
+          }
+        ]
+      }
+    },
+    "protect": {
+      "description": "Paths in the workspace mounted read-only, so the sandbox can't change files the host runs (default: .mpm, .git/config, .git/hooks, */.git/config, */.git/hooks). * matches one path segment.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^(?![/~])(?!(.*/)?\\.\\.(/|$))[^\\u0000-\\u001f\\u007f-\\u009f]*$"
+      }
+    },
+    "ports": {
+      "description": "Published ports. A bare port or range keeps its number on the host; use HOST:CONTAINER or IP:HOST:CONTAINER to remap.",
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {"type": "integer", "minimum": 1, "maximum": 65535},
+          {
+            "type": "string",
+            "pattern": "^((\\d{1,3}\\.){3}\\d{1,3}:)?(\\d+(-\\d+)?:)?\\d+(-\\d+)?(/(tcp|udp|sctp))?$"
+          }
+        ]
+      }
+    },
+    "network": {
+      "description": "Docker network: bridge, none, or a network name.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cpus": {
+          "description": "CPU limit (docker --cpus).",
+          "oneOf": [
+            {"type": "number", "exclusiveMinimum": 0},
+            {"type": "string", "pattern": "^\\d+(\\.\\d+)?$"}
+          ]
+        },
+        "memory": {
+          "description": "Memory limit (docker --memory), e.g. 16g.",
+          "oneOf": [
+            {"type": "integer", "minimum": 1},
+            {"type": "string", "pattern": "^\\d+[bkmgBKMG]?$"}
+          ]
+        },
+        "pids": {
+          "description": "Process limit (docker --pids-limit).",
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "env": {
+      "description": "Environment variables set in the container.",
+      "type": "object",
+      "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "additionalProperties": {
+        "oneOf": [
+          {"$ref": "#/definitions/text"},
+          {"type": "number"},
+          {"type": "boolean"}
+        ]
+      }
+    },
+    "readonly": {
+      "description": "Read-only root filesystem (the mounts stay writable).",
+      "type": "boolean"
+    },
+    "tmpExec": {
+      "description": "Allow running executables from /tmp (mounted noexec by default).",
+      "type": "boolean"
+    },
+    "shell": {
+      "description": "Command run by `asb sh` with no arguments (default: /bin/bash).",
+      "$ref": "#/definitions/text"
+    },
+    "runArgs": {
+      "description": "Extra `docker run` arguments, one per item. Use sparingly.",
+      "type": "array",
+      "items": {"$ref": "#/definitions/text"}
+    }
+  },
+  "definitions": {
+    "text": {
+      "type": "string",
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]*$"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_.-]*$"
+    },
+    "hostPath": {
+      "description": "An absolute path, or one starting with ~/ (your home).",
+      "type": "string",
+      "pattern": "^(~|~/|/)[^\\u0000-\\u001f\\u007f-\\u009f]*$"
+    },
+    "containerPath": {
+      "description": "A container path; ~ and relative paths are in the container home.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]*$"
+    }
+  }
+}
