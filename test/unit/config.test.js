@@ -156,7 +156,8 @@ describe('sandbox selection', () => {
       'sandboxes/inner.yaml': 'workspace: ~/ws/inner\n' +
         'mounts: [~/shared:/shared]\n',
       'sandboxes/other.yaml': 'workspace: ~/other\n' +
-        'mounts: [~/shared:/shared]\n'
+        'mounts: [~/shared:/shared]\n',
+      'sandboxes/broken.yaml': 'workspace: ~/ws\nimage: nope\n'
     });
     await fs.mkdir(path.join(env.HOME, 'ws', 'inner', 'repo'),
       {recursive: true});
@@ -178,6 +179,8 @@ describe('sandbox selection', () => {
       await expect(select(path.join(home, 'shared')))
         .rejects.toThrow(/more than one sandbox: inner, other/);
       await expect(select(home)).rejects.toThrow(/not in one/);
+      await expect(select(home, {name: 'broken'}))
+        .rejects.toThrow(/unknown image/);
       expect((await findSandboxForPath(config,
         path.join(dir, 'data', 'asb', 'homes', 'other')))[0].name)
         .toBe('other');
