@@ -1,7 +1,7 @@
 # asb — Anything Sandbox: Rewrite Plan
 
-Status: **v0.1**. Decisions are marked ✅ decided, 🟡 proposed default, or
-❓ open question.
+Status: **v0.2**. Milestones 1–4 are implemented (see §9). Decisions are
+marked ✅ decided, 🟡 proposed default, or ❓ open question.
 
 ## 1. Goals
 
@@ -127,7 +127,7 @@ env: {NODE_ENV: development}
   targets are relative to the container home.
 - ✅ Environment variables: only `ASB_CONFIG_DIR` and `ASB_SANDBOX`.
   Everything else that was an `ASB_*` variable is now config.
-- 🟡 `asb new`, `asb rm`, and `asb config set|unset` edit files keeping
+- ✅ `asb new`, `asb rm`, and `asb config set|unset` edit files keeping
   comments, validate before writing, and show a diff with `-n`.
 
 ## 6. Security model
@@ -221,14 +221,14 @@ test/                 # vitest: unit tests of argv building; CLI tests with a fa
 
 ## 9. Milestones
 
-1. **Scaffold**: package.json, eslint, vitest, CI, LICENSE, CHANGELOG,
+1. ✅ **Scaffold**: package.json, eslint, vitest, CI, LICENSE, CHANGELOG,
    `bin/asb.js`.
-2. **Core**: config loading and validation, sandbox resolution and
+2. ✅ **Core**: config loading and validation, sandbox resolution and
    selection, docker argv builders, protected paths.
-3. **Commands**: parity with the shell version (`build`, `start`, `stop`,
+3. ✅ **Commands**: parity with the shell version (`build`, `start`, `stop`,
    `restart`, `sh`, `run`, `status`, `logs`), then `new`, `rm`, `ls`,
    `show`, `edit`, `config`.
-4. **Switch over**: remove the shell script, move the Dockerfile to
+4. ✅ **Switch over**: remove the shell script, move the Dockerfile to
    `images/default/`, README, CHANGELOG.
 5. **Polish**: shell completion; publish `@evotronics/asb`.
 6. **Future**:
