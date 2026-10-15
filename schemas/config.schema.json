@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "config.schema.json",
+  "title": "asb config (~/.config/asb/config.yaml)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "description": "Config format version.",
+      "const": 1
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "user": {
+          "description": "User name in the container; its home is /home/USER (default: agent).",
+          "type": "string",
+          "pattern": "^[a-z_][a-z0-9_-]*$"
+        },
+        "uid": {
+          "description": "uid the container runs as (default: yours).",
+          "type": "integer",
+          "minimum": 0
+        },
+        "gid": {
+          "description": "gid the container runs as (default: yours).",
+          "type": "integer",
+          "minimum": 0
+        },
+        "docker": {
+          "description": "Docker compatible command to run (default: docker).",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]*$"
+        }
+      }
+    },
+    "defaults": {
+      "description": "Sandbox properties applied to every sandbox. A sandbox's own values override them; objects (resources, env) merge key by key.",
+      "$ref": "sandbox.schema.json"
+    },
+    "images": {
+      "description": "Images that can be built with `asb build`, by name. `default` is built in.",
+      "type": "object",
+      "propertyNames": {"$ref": "sandbox.schema.json#/definitions/name"},
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "description": "Build context directory (required except for the built-in default image).",
+            "$ref": "sandbox.schema.json#/definitions/hostPath"
+          },
+          "dockerfile": {
+            "description": "Dockerfile, relative to the context (default: Dockerfile).",
+            "$ref": "sandbox.schema.json#/definitions/text"
+          },
+          "tag": {
+            "description": "Image tag (default: asb-NAME).",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:/@-]*$"
+          },
+          "args": {
+            "description": "Build args, in addition to USERNAME, UID, and GID.",
+            "type": "object",
+            "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+            "additionalProperties": {
+              "oneOf": [
+                {"$ref": "sandbox.schema.json#/definitions/text"},
+                {"type": "number"},
+                {"type": "boolean"}
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}
