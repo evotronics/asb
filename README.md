@@ -6,23 +6,26 @@ with its own home directory, workspace, extra mounts, ports, and limits. The
 container runs as your uid/gid, so files it creates in its mounts are owned
 by you, and **the mounts are its only writable windows onto the host**.
 
-A typical workspace is an [mpm](https://github.com/evotronics/mpm) workspace
-holding only the few repos a project needs, so an agent sees a scoped set of
-checkouts.
-
-> Status: early rewrite of a shell script (see
-> [CHANGELOG.md](CHANGELOG.md)). See [PLAN.md](PLAN.md) for the design and
-> roadmap.
+asb works well with [mpm](https://github.com/evotronics/mpm): an mpm
+workspace holding only the repos a project needs makes a scoped workspace for
+a sandbox, so an agent sees just those checkouts.
 
 ## Install
 
 Requires Node.js >= 22.12 and Docker (or a Docker compatible CLI such as
-podman). The npm package, `@evotronics/asb`, is not published yet; install
-from a checkout:
+podman).
+
+From npm:
+
+```sh
+npm install -g @evotronics/asb   # provides `asb` (and `anything-sandbox`)
+```
+
+Or from a checkout:
 
 ```sh
 git clone https://github.com/evotronics/asb.git ~/src/asb
-cd ~/src/asb && npm install && npm link   # provides `asb`
+cd ~/src/asb && npm install && npm link
 ```
 
 ## Quick start
@@ -259,10 +262,15 @@ asb config set defaults.image dev         # for every sandbox; or image: dev in 
 ```
 
 [`examples/images/dev`](examples/images/dev) is a ready-made one with vim,
-tmux, tig, fzf, htop, and btop: `cp -r examples/images/dev
-~/.config/asb/images/` from an asb checkout, then edit it. Shell config every
-sandbox should share (a system `bashrc`, `vimrc`) can be `COPY`ed into the
-image; per-sandbox config belongs in that sandbox's home.
+tmux, tig, fzf, htop, and btop. Copy it, then edit it:
+
+```sh
+cp -r "$(npm root -g)/@evotronics/asb/examples/images/dev" ~/.config/asb/images/
+# or, from a checkout: cp -r examples/images/dev ~/.config/asb/images/
+```
+
+Shell config every sandbox should share (a system `bashrc`, `vimrc`) can be
+`COPY`ed into the image; per-sandbox config belongs in that sandbox's home.
 
 **Lightweight runs** of a tool or agent, with the small `base` image:
 
