@@ -43,7 +43,7 @@ RUN set -eux; \
     if ! getent group "${GID}" >/dev/null; then \
         groupadd -g "${GID}" "${USERNAME}"; \
     fi; \
-    useradd -m -u "${UID}" -g "${GID}" -s /bin/bash "${USERNAME}"
+    useradd -l -m -u "${UID}" -g "${GID}" -s /bin/bash "${USERNAME}"
 
 WORKDIR /home/${USERNAME}/workspace
 USER ${USERNAME}
