@@ -4,11 +4,18 @@
  * line to `$FAKE_DOCKER_DIR/calls.log`.
  *
  * `$FAKE_DOCKER_DIR/containers.json` (optional) lists containers as
- * `[{name, sandbox, state, status, ports}]`. `ps --quiet --filter name=^X$`
- * prints an id if X is running; `ps --format ...` with `{{.Names}}\t...`
- * prints containers labeled `asb.sandbox`. `$FAKE_DOCKER_DIR/exit` (optional)
- * holds the exit code for other commands. `image ls` prints the
- * `repository:tag` values in `$FAKE_DOCKER_DIR/images.json` (optional).
+ * `[{name, sandbox, state, status, ports}]`.
+ * - `ps --quiet --filter name=REGEX` prints an id if a running container
+ *   matches (any container with `--all`); like docker, the filter value is
+ *   a regular expression.
+ * - `ps --format ...` with `{{.Names}}\t...` prints all containers.
+ * - `stop` marks containers `removing`; they disappear after the number of
+ *   `ps --all --quiet` calls in `$FAKE_DOCKER_DIR/remove-lag` (default 0),
+ *   like docker removing `--rm` containers shortly after they stop.
+ * - `image ls` prints the `repository:tag` values in
+ *   `$FAKE_DOCKER_DIR/images.json` (optional).
+ * - `$FAKE_DOCKER_DIR/exit` (optional) holds the exit code for other
+ *   commands.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,14 +28,26 @@ const read = (name, fallback) => {
   const file = path.join(dir, name);
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : fallback;
 };
-const containers = JSON.parse(read('containers.json', '[]'));
+let containers = JSON.parse(read('containers.json', '[]'));
+const save = () => fs.writeFileSync(path.join(dir, 'containers.json'),
+  JSON.stringify(containers));
 
 if(args[0] === 'ps') {
   if(args.includes('--quiet')) {
     const filter = args[args.indexOf('--filter') + 1];
-    const name = filter.replace(/^name=\^/, '').replace(/\$$/, '');
-    if(containers.some(c => c.name === name && c.state === 'running')) {
+    const pattern = new RegExp(filter.replace(/^name=/, ''));
+    const all = args.includes('--all');
+    if(containers.some(c => pattern.test(c.name) &&
+      (all || c.state === 'running'))) {
       process.stdout.write('0123456789ab\n');
+    }
+    if(all) {
+      for(const c of containers.filter(c => c.state === 'removing')) {
+        c.lag -= 1;
+      }
+      containers = containers.filter(c =>
+        c.state !== 'removing' || c.lag > 0);
+      save();
     }
   } else if(args.at(-1).startsWith('{{.Names}}')) {
     for(const c of containers) {
@@ -47,9 +66,14 @@ if(args[0] === 'image' && args[1] === 'ls') {
   process.exit(0);
 }
 if(args[0] === 'stop') {
-  // containers are started with --rm
-  fs.writeFileSync(path.join(dir, 'containers.json'), JSON.stringify(
-    containers.filter(c => !args.includes(c.name))));
+  // containers are started with --rm, and docker removes them a moment
+  // after they stop
+  const lag = Number(read('remove-lag', '0'));
+  for(const c of containers.filter(c => args.includes(c.name))) {
+    Object.assign(c, {state: 'removing', lag});
+  }
+  containers = containers.filter(c => c.state !== 'removing' || c.lag > 0);
+  save();
 }
 process.stdout.write(`fake docker ${args[0]}\n`);
 process.exit(Number(read('exit', '0')));
