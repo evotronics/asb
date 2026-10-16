@@ -71,8 +71,8 @@ describe('runArgs', () => {
         'type=bind,source=/data,target=/home/agent/data'
       ]);
       expect(args.join(' ')).toContain(
-        '--workdir /home/agent/workspace/r --publish 9323:9323 ' +
-        '--publish 8080:80 --env HOME=/home/agent --env A=1 ' +
+        '--workdir /home/agent/workspace/r --publish 127.0.0.1:9323:9323 ' +
+        '--publish 127.0.0.1:8080:80 --env HOME=/home/agent --env A=1 ' +
         '--add-host host.docker.internal:host-gateway asb-default npm test');
       expect(args.join(' ')).toContain('--network none');
     });

@@ -119,7 +119,7 @@ mounts:
   - source: ~/src/shared-fixtures
     target: ~/fixtures                      # ~ = the container home
     readonly: true
-ports: [5173-5177, 9323]                    # bare ports keep their number
+ports: [5173-5177, 9323]                    # on 127.0.0.1, same numbers
 network: bridge                             # bridge | none | <network name>
 resources: {memory: 8g}                     # merged with defaults
 env: {NODE_ENV: development}

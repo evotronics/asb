@@ -82,7 +82,8 @@ describe('config', () => {
           readonly: true},
         {source: '/data', target: '/data', readonly: false}
       ],
-      ports: ['5173-5177:5173-5177', '127.0.0.1:8080:80', '53:53/udp'],
+      ports: ['127.0.0.1:5173-5177:5173-5177', '127.0.0.1:8080:80',
+        '127.0.0.1:53:53/udp'],
       network: 'bridge',
       resources: {cpus: 2, memory: '4g', pids: 2048},
       env: {A: '1', B: '2'},
@@ -202,10 +203,13 @@ describe('sandbox selection', () => {
 
 describe('helpers', () => {
   it('normalizes ports', () => {
-    expect(normalizePort(9323)).toBe('9323:9323');
-    expect(normalizePort('5173-5177')).toBe('5173-5177:5173-5177');
-    expect(normalizePort('53/udp')).toBe('53:53/udp');
-    expect(normalizePort('8080:80')).toBe('8080:80');
+    expect(normalizePort(9323)).toBe('127.0.0.1:9323:9323');
+    expect(normalizePort('5173-5177')).toBe('127.0.0.1:5173-5177:5173-5177');
+    expect(normalizePort('53/udp')).toBe('127.0.0.1:53:53/udp');
+    expect(normalizePort('8080:80')).toBe('127.0.0.1:8080:80');
+    expect(normalizePort('0.0.0.0:9323')).toBe('0.0.0.0:9323:9323');
+    expect(normalizePort('10.0.0.5:53/udp')).toBe('10.0.0.5:53:53/udp');
+    expect(normalizePort('0.0.0.0:8080:80')).toBe('0.0.0.0:8080:80');
   });
 
   it('parses mounts', () => {
