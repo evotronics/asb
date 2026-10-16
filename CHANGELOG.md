@@ -22,13 +22,17 @@
   `~/.local/share/asb/homes/NAME` (created on first start) instead of
   `home/` next to the script.
 - **BREAKING**: The single Dockerfile is split into layered built-in
-  images, each building on the one before: `base` (Ubuntu with git, curl,
-  ssh, procps, a UTF-8 locale, and your user, for lightweight runs),
+  images, each building on the one before: `base` (Ubuntu 26.04 with git,
+  curl, ssh, procps, a UTF-8 locale, and your user, for lightweight runs),
   `default` (development tools: build-essential, Node.js, Python with uv,
   gh, ripgrep, fd, jq, ast-grep, shellcheck, sqlite3), and `playwright`
-  (browser dependencies). Sandboxes use `default` unless they set `image`.
-  pip is replaced by uv, since Ubuntu's system Python refuses pip
-  installs. The editor and terminal tools (vim, tmux, tig, fzf, htop,
+  (browser dependencies, installed by a pinned `playwright install-deps`
+  for the image's Ubuntu release and CPU). Sandboxes use `default` unless
+  they set `image`. Ubuntu 26.04 brings Python 3.14 and Rust coreutils
+  (uutils) in place of GNU coreutils. pip is replaced by uv, since
+  Ubuntu's system Python refuses pip installs. apt downloads are kept in
+  BuildKit cache mounts, reused across builds and kept out of the image
+  layers. The editor and terminal tools (vim, tmux, tig, fzf, htop,
   btop) moved to an example personal image, `examples/images/dev`.
   `rebuild` is now `build --no-cache`.
 - **BREAKING**: `config` (print the resolved configuration) is now `show`

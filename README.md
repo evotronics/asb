@@ -182,9 +182,9 @@ Each builds on the one before it:
 
 | Image | Built from | Adds | Use it for |
 |---|---|---|---|
-| `base` | `ubuntu:24.04` | git, curl, ssh, less, procps (`ps`, `kill`), a UTF-8 locale, and your user | Lightweight tool or agent runs |
+| `base` | `ubuntu:26.04` | git, curl, ssh, less, procps (`ps`, `kill`), a UTF-8 locale, and your user | Lightweight tool or agent runs |
 | `default` | `base` | build-essential, Node.js LTS, Python with uv, gh, ripgrep, fd, jq, ast-grep, shellcheck, sqlite3, zip | General development; sandboxes use it unless they set `image` |
-| `playwright` | `default` | System libraries and fonts for Playwright's chromium, firefox, and webkit | Browser tests |
+| `playwright` | `default` | System libraries and fonts for Playwright's chromium, firefox, and webkit, from `playwright install-deps` (pinned version) | Browser tests |
 
 They live in asb's [`images/`](images) directory. None of them has an
 editor or other personal tools: those go in an image of your own built from
@@ -221,12 +221,23 @@ tagged `asb-<name>`. A directory named after a built-in image (for example
   install packages as root and switch back:
 
   ```dockerfile
+  # syntax=docker/dockerfile:1
   FROM asb-default
   USER root
-  RUN apt-get update && apt-get install -y vim && rm -rf /var/lib/apt/lists/*
+  RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+      --mount=type=cache,target=/var/lib/apt,sharing=locked \
+      apt-get update && apt-get install -y --no-install-recommends vim
   ARG USERNAME=agent
   USER ${USERNAME}
   ```
+
+- **apt cache mounts.** The built-in images keep apt's package lists and
+  downloads in BuildKit cache mounts (as above), so rebuilds reuse them,
+  even with `--no-cache`, and they stay out of the image layers. `base`
+  configures apt to keep downloads for this, so use the mounts in your
+  images too; a plain `apt-get install` would leave the downloaded
+  packages in your image. BuildKit is the default since Docker 23, and
+  podman supports cache mounts.
 
 - **Base images first.** A `FROM` line naming another asb image's tag
   (`FROM asb-default`) makes `asb build` build that image first, so
@@ -250,7 +261,10 @@ files and what it is built from.
 **Use the built-ins.** `asb build` builds `default` (and `base`), which
 every sandbox uses by default. For browser tests, set `image: playwright` in
 the sandbox, run `asb build playwright`, then `npx playwright install` in
-the sandbox: the browsers download into its home.
+the sandbox: the browsers download into its home. The image's system
+packages come from a pinned Playwright version (`PLAYWRIGHT_VERSION` in its
+Dockerfile); if a project's newer Playwright needs more, copy the image
+(`asb image new playwright --copy playwright`) and raise the version.
 
 **A personal image for interactive shells**, with your editor and tools:
 
