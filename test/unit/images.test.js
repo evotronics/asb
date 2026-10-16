@@ -107,6 +107,19 @@ describe('images', () => {
       .rejects.toThrow(/Unknown image "nope"/);
   });
 
+  it('ships layered built-in images', async () => {
+    const images = await loadImages({env});
+    expect(Object.keys(images)).toEqual(['base', 'default', 'playwright']);
+    expect(await buildOrder(['playwright'], images)).toEqual([
+      {name: 'base', baseOf: 'default'},
+      {name: 'default', baseOf: 'playwright'},
+      {name: 'playwright'}
+    ]);
+    for(const image of Object.values(images)) {
+      expect(image.description).toBeTruthy();
+    }
+  });
+
   it('reports cycles and missing Dockerfiles', async () => {
     await writeFiles(userDir, {
       'a/Dockerfile': 'FROM asb-b\n',

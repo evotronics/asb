@@ -25,6 +25,7 @@
   },
   "files": [
     "bin/",
+    "examples/",
     "images/",
     "lib/",
     "schemas/"
