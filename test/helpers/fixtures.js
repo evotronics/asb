@@ -52,6 +52,8 @@ export const FAKE_DOCKER = path.join(import.meta.dirname, 'fake-docker.js');
  * @param {object} [options] - Options.
  * @param {string} [options.config] - Extra config.yaml text.
  * @param {object} [options.sandboxes] - Map of name to sandbox file text.
+ * @param {object} [options.configFiles] - Map of path relative to the
+ *   config directory to content.
  * @param {object} [options.files] - Map of path relative to the home
  *   directory to content.
  *
@@ -60,7 +62,7 @@ export const FAKE_DOCKER = path.join(import.meta.dirname, 'fake-docker.js');
  *   docker's argv arrays.
  */
 export async function createEnv({
-  config = '', sandboxes = {}, files = {}
+  config = '', sandboxes = {}, configFiles = {}, files = {}
 } = {}) {
   const dir = await tempDir();
   const home = path.join(dir, 'home');
@@ -72,7 +74,8 @@ export async function createEnv({
     'config.yaml': `version: 1\nsettings:\n  docker: ${FAKE_DOCKER}\n` +
       config,
     ...Object.fromEntries(Object.entries(sandboxes).map(
-      ([name, text]) => [`sandboxes/${name}.yaml`, text]))
+      ([name, text]) => [`sandboxes/${name}.yaml`, text])),
+    ...configFiles
   });
   await writeFiles(home, files);
   return {

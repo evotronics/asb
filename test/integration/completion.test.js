@@ -6,7 +6,7 @@ describe('completion', () => {
 
   beforeEach(async () => {
     t = await createEnv({
-      config: 'images:\n  node: {context: ~/img}\n',
+      configFiles: {'images/node/Dockerfile': 'FROM asb-default\n'},
       sandboxes: {
         widget: 'description: Widget work\n',
         scratch: ''
@@ -27,7 +27,7 @@ describe('completion', () => {
     expect(await words('stop', 'widget', '')).toEqual(['scratch', 'widget']);
     expect(await words('-s', 'w')).toEqual(['widget']);
     expect(await words('sh', '--sandbox', '')).toEqual(['scratch', 'widget']);
-    expect(await words('build', '')).toEqual(['default', 'node']);
+    expect(await words('build', 'n')).toEqual(['node']);
     expect(await words('new', 'x', '--image', 'n')).toEqual(['node']);
     expect(await words('new', 'x', '-w', '')).toEqual(['__dirs__']);
     expect(await words('config', '')).toEqual(

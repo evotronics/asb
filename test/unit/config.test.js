@@ -41,10 +41,9 @@ describe('config', () => {
         '  resources: {cpus: 2, memory: 8g}',
         '  env: {A: "1", B: two}',
         '  ports: [9323]',
-        'images:',
-        '  node: {context: ~/images/node, args: {NODE: 24}}',
         ''
       ].join('\n'),
+      'images/node/image.yaml': 'context: ~/images/node\nargs: {NODE: 24}\n',
       'sandboxes/widget.yaml': [
         'description: Widget',
         'image: node',
@@ -95,6 +94,8 @@ describe('config', () => {
     });
     expect(sandbox.image).toMatchObject({
       name: 'node',
+      source: 'user',
+      dir: path.join(env.ASB_CONFIG_DIR, 'images', 'node'),
       tag: 'asb-node',
       context: path.join(env.HOME, 'images', 'node'),
       args: {NODE: 24}

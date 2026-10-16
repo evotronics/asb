@@ -39,42 +39,6 @@
     "defaults": {
       "description": "Sandbox properties applied to every sandbox. A sandbox's own values override them; objects (resources, env) merge key by key.",
       "$ref": "sandbox.schema.json"
-    },
-    "images": {
-      "description": "Images that can be built with `asb build`, by name. `default` is built in.",
-      "type": "object",
-      "propertyNames": {"$ref": "sandbox.schema.json#/definitions/name"},
-      "additionalProperties": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "context": {
-            "description": "Build context directory (required except for the built-in default image).",
-            "$ref": "sandbox.schema.json#/definitions/hostPath"
-          },
-          "dockerfile": {
-            "description": "Dockerfile, relative to the context (default: Dockerfile).",
-            "$ref": "sandbox.schema.json#/definitions/text"
-          },
-          "tag": {
-            "description": "Image tag (default: asb-NAME).",
-            "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:/@-]*$"
-          },
-          "args": {
-            "description": "Build args, in addition to USERNAME, UID, and GID.",
-            "type": "object",
-            "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
-            "additionalProperties": {
-              "oneOf": [
-                {"$ref": "sandbox.schema.json#/definitions/text"},
-                {"type": "number"},
-                {"type": "boolean"}
-              ]
-            }
-          }
-        }
-      }
     }
   }
 }
