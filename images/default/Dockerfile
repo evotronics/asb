@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # asb default image: base plus common development tools (compilers, Node.js,
 # Python with uv, the GitHub CLI, search, JSON, and lint tools). No editor or
 # other personal tools: build your own image FROM asb-default for those.
@@ -8,7 +9,9 @@ USER root
 
 # python3 is for node-gyp (native npm modules) and quick scripts. There is
 # no pip: Ubuntu's system Python refuses pip installs; use uv instead.
-RUN apt-get update && apt-get install -y \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     bash-completion \
     build-essential \
     fd-find \
@@ -23,8 +26,7 @@ RUN apt-get update && apt-get install -y \
     tree \
     unzip \
     xz-utils \
-    zip \
-    && rm -rf /var/lib/apt/lists/*
+    zip
 
 # Ubuntu names fd "fdfind"
 RUN ln -s /usr/bin/fdfind /usr/local/bin/fd
@@ -35,23 +37,28 @@ RUN ln -s /usr/bin/fdfind /usr/local/bin/fd
 COPY --from=ghcr.io/astral-sh/uv:0.13.1 /uv /uvx /usr/local/bin/
 
 # GitHub CLI
-RUN curl -fsSL -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    curl -fsSL -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
         https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
         > /etc/apt/sources.list.d/github-cli.list \
     && apt-get update \
-    && apt-get install -y gh \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get install -y --no-install-recommends gh
 
 # Node.js (current LTS, from NodeSource)
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
-    && apt-get install -y nodejs \
-    && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs
 
 # ast-grep (ast-grep and sg): structural code search and rewrites. Installed
 # in /usr/local: anything under the home directory is hidden by the
-# sandbox's home mount.
-RUN npm install -g --prefix /usr/local @ast-grep/cli
+# sandbox's home mount. HOME is the sandbox user's, so npm's cache is set
+# to the cache mount explicitly.
+RUN --mount=type=cache,target=/root/.npm \
+    npm_config_cache=/root/.npm \
+    npm install -g --prefix /usr/local @ast-grep/cli
 
 # `npm install -g` in a sandbox goes to its home mount, as the sandbox user
 ENV NPM_CONFIG_PREFIX=${HOME}/.npm-global
