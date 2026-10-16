@@ -179,8 +179,8 @@ Each builds on the one before it:
 
 | Image | Built from | Adds | Use it for |
 |---|---|---|---|
-| `base` | `ubuntu:24.04` | git, curl, ssh, less, and your user | Lightweight tool or agent runs |
-| `default` | `base` | build-essential, Python, Node.js LTS, gh, ripgrep, jq, rsync, tree | General development; sandboxes use it unless they set `image` |
+| `base` | `ubuntu:24.04` | git, curl, ssh, less, procps (`ps`, `kill`), a UTF-8 locale, and your user | Lightweight tool or agent runs |
+| `default` | `base` | build-essential, Node.js LTS, Python with uv, gh, ripgrep, fd, jq, ast-grep, shellcheck, sqlite3, zip | General development; sandboxes use it unless they set `image` |
 | `playwright` | `default` | System libraries and fonts for Playwright's chromium, firefox, and webkit | Browser tests |
 
 They live in asb's [`images/`](images) directory. None of them has an
@@ -230,6 +230,11 @@ tagged `asb-<name>`. A directory named after a built-in image (for example
   `asb build playwright` builds base, default, and playwright. Docker's
   layer cache makes unchanged images quick. `--no-bases` builds only the
   named images. `FROM ${VARIABLE}` is not detected.
+- **Install outside `$HOME`.** At runtime the sandbox's home mount replaces
+  `/home/<user>`, hiding anything a Dockerfile put there. Install with apt,
+  or into `/usr/local`: `npm install -g --prefix /usr/local <tool>` (the
+  default image points npm's global prefix into the home, so the prefix
+  is needed), or `COPY` binaries to `/usr/local/bin`.
 - **Rebuilding.** Run `asb build` again after editing an image. Running
   containers keep the image they started with until `asb restart`. After
   changing `user`, `uid`, or `gid`, rebuild your images.
@@ -301,8 +306,11 @@ rebuild it, and can't be changed from inside a sandbox: put system packages
 and tools you want everywhere there. A sandbox's **home** belongs to that
 sandbox and persists across containers: per-project tools fit there.
 `npm install -g` (the default image sets `NPM_CONFIG_PREFIX` to
-`~/.npm-global`), `pip install --user`, and installer scripts that write to
+`~/.npm-global`), `uv tool install`, and installer scripts that write to
 `~/.local/bin` all land in the home, and both directories are on `PATH`.
+`uvx <tool>` runs a Python tool (or an MCP server) without installing it,
+like `npx`. Ubuntu's system Python refuses `pip install`, even with
+`--user`, so use uv, or a virtualenv made with `uv venv`.
 
 ## Security model
 

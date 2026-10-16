@@ -39,7 +39,7 @@ RUN set -eux; \
 WORKDIR /home/${USERNAME}/workspace
 USER ${USERNAME}
 
-# HOME is the sandbox's home mount; tools installed there (pip --user,
+# HOME is the sandbox's home mount; tools installed there (uv tool install,
 # npm -g, installer scripts) persist across containers.
 ENV HOME=/home/${USERNAME}
 ENV PATH="${HOME}/.local/bin:${HOME}/.npm-global/bin:${PATH}"
