@@ -156,6 +156,10 @@ describe('container commands', () => {
       .toBe(0);
     expect((await t.calls()).at(-1))
       .toEqual(['logs', '-f', '--tail', '5', 'asb-widget']);
+    // -n is docker's --tail here, not asb's --dry-run
+    expect((await asb(['-s', 'widget', 'logs', '-n', '20'])).code).toBe(0);
+    expect((await t.calls()).at(-1))
+      .toEqual(['logs', '-n', '20', 'asb-widget']);
   });
 
   it('builds images', async () => {
@@ -182,6 +186,13 @@ describe('container commands', () => {
 
     result = await asb(['-s', 'nope', 'build']);
     expect(result.stderr).toMatch(/Unknown sandbox "nope"/);
+
+    // a directory in two sandboxes is an error, not the default image
+    await writeFiles(t.configDir,
+      {'sandboxes/dup.yaml': 'workspace: ~/ws/widget\n'});
+    result = await asb(['build'], {cwd: path.join(t.home, 'ws', 'widget')});
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/more than one sandbox: dup, widget/);
   });
 
   it('only pulls images that are not built from asb images', async () => {
