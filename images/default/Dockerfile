@@ -30,8 +30,9 @@ RUN apt-get update && apt-get install -y \
 RUN ln -s /usr/bin/fdfind /usr/local/bin/fd
 
 # uv: uvx runs Python tools and MCP servers (like npx), and uv makes
-# virtualenvs. `asb build --pull` picks up new versions.
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+# virtualenvs. Pinned; COPY --from can't use build args, so change the
+# version here.
+COPY --from=ghcr.io/astral-sh/uv:0.13.1 /uv /uvx /usr/local/bin/
 
 # GitHub CLI
 RUN curl -fsSL -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
