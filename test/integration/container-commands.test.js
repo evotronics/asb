@@ -170,6 +170,41 @@ describe('container commands', () => {
     expect(result.stderr).toMatch(/Unknown sandbox "nope"/);
   });
 
+  it('builds base images first', async () => {
+    const tags = async () => (await t.calls()).filter(c => c[0] === 'build')
+      .map(c => flag(c, '--tag'));
+    await writeFiles(t.configDir, {
+      'images/dev/Dockerfile': 'FROM asb-default\nRUN echo dev\n'
+    });
+    let result = await asb(['build', 'dev', 'playwright']);
+    expect(result.code).toBe(0);
+    expect(await tags()).toEqual(
+      ['asb-base', 'asb-default', 'asb-dev', 'asb-playwright']);
+    expect(result.stderr.split('\n').filter(Boolean)).toEqual([
+      'asb: building asb-base (the base of default)',
+      'asb: building asb-default (the base of dev)'
+    ]);
+
+    await asb(['build', '--no-bases', 'dev']);
+    expect((await tags()).at(-1)).toBe('asb-dev');
+    expect((await tags()).length).toBe(5);
+
+    // a user image replaces the built-in one it is named after
+    await writeFiles(t.configDir, {
+      'images/default/Dockerfile': 'FROM ubuntu:24.04\n'
+    });
+    await asb(['build', 'dev']);
+    const calls = (await t.calls()).filter(c => c[0] === 'build').slice(-2);
+    expect(calls.map(c => flag(c, '--tag')))
+      .toEqual(['asb-default', 'asb-dev']);
+    expect(calls[0].at(-1)).toBe(path.join(t.configDir, 'images', 'default'));
+
+    await t.setExit(1);
+    result = await asb(['build', 'dev']);
+    expect(result.code).toBe(1);
+    expect((await tags()).length).toBe(8);
+  });
+
   it('reports a missing docker command', async () => {
     await fs.writeFile(path.join(t.configDir, 'config.yaml'),
       'version: 1\nsettings: {docker: /nonexistent/docker}\n');
