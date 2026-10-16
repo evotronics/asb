@@ -167,8 +167,6 @@ describe('config command', () => {
     expect(result.stdout).toMatch(/^user: agent {2}\(default\)$/m);
     expect(result.stdout)
       .toMatch(/^docker: .*fake-docker\.js {2}\(.*config\.yaml\)$/m);
-    result = await asb(['config', 'get', 'images.default.tag']);
-    expect(result.stdout).toBe('asb-default\n');
     result = await asb(['config', 'get', 'nope']);
     expect(result.code).toBe(2);
   });

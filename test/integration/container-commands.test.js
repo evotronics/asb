@@ -1,5 +1,5 @@
 import {beforeEach, describe, expect, it} from 'vitest';
-import {createEnv, run} from '../helpers/fixtures.js';
+import {createEnv, run, writeFiles} from '../helpers/fixtures.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -156,8 +156,9 @@ describe('container commands', () => {
     expect(result.code).toBe(2);
     expect(result.stderr).toMatch(/Unknown image "nope"/);
 
-    await fs.appendFile(path.join(t.configDir, 'config.yaml'),
-      'images:\n  node: {context: ~/img}\n');
+    await writeFiles(t.configDir,
+      {'images/node/image.yaml': 'context: ~/img\n'});
+    await writeFiles(t.home, {'img/Dockerfile': 'FROM ubuntu:24.04\n'});
     await fs.appendFile(path.join(t.configDir, 'sandboxes', 'widget.yaml'),
       'image: node\n');
     await asb(['build'], {cwd: path.join(t.home, 'ws', 'widget')});

@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "image.schema.json",
+  "title": "asb image (~/.config/asb/images/NAME/image.yaml)",
+  "description": "Optional settings for the image whose directory holds this file. The directory is the build context unless `context` is set.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "description": {
+      "description": "What the image is for, shown by `asb image ls`.",
+      "$ref": "sandbox.schema.json#/definitions/text"
+    },
+    "context": {
+      "description": "Build context directory, if not this directory: absolute, starting with ~/, or relative to this directory.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]*$"
+    },
+    "dockerfile": {
+      "description": "Dockerfile, relative to the context (default: Dockerfile).",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]*$"
+    },
+    "tag": {
+      "description": "Image tag (default: asb-NAME).",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_.:/@-]*$"
+    },
+    "args": {
+      "description": "Build args, in addition to USERNAME, UID, and GID.",
+      "type": "object",
+      "propertyNames": {"pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "additionalProperties": {
+        "oneOf": [
+          {"$ref": "sandbox.schema.json#/definitions/text"},
+          {"type": "number"},
+          {"type": "boolean"}
+        ]
+      }
+    }
+  }
+}
