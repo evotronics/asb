@@ -28,7 +28,7 @@ cd ~/src/asb && npm install && npm link   # provides `asb`
 ## Quick start
 
 ```sh
-asb build                                 # build the default image with your uid/gid
+asb build                                 # build the default image (and base) with your uid/gid
 asb new widget -w ~/sandboxes/widget -p 5173-5177
 cd ~/sandboxes/widget
 asb start                                 # the sandbox is found from the current directory
@@ -54,8 +54,11 @@ asb [global options] <command> [options] [args...]
 | `ls` | Sandboxes with container state, image, and workspace |
 | `show [name]` | Resolved settings (`--docker`: the `docker run` command) |
 | `edit [name]` | Open the sandbox's file in `$VISUAL`/`$EDITOR`, then validate it |
-| `build [images...]` | Build images (`--no-cache`, `--pull`); default: the current sandbox's image |
-| `config get\|set\|unset\|path\|validate\|edit` | Settings, defaults, and images in `config.yaml` |
+| `image ls` | Built-in and your images, whether they are built, and what each is built from |
+| `image new <name>` | Create an image directory (`--from <image>`, `--copy <image>`, `-d`) |
+| `image show [name]` | An image's files, tag, args, and base images |
+| `build [images...]` | Build images and the asb images they are built from (`--no-bases`, `--no-cache`, `--pull`); default: the current sandbox's image |
+| `config get\|set\|unset\|path\|validate\|edit` | Settings and sandbox defaults in `config.yaml` |
 | `completion bash\|zsh\|fish` | Print a shell completion script |
 | `start [name]` / `up` | Start the container (detached, `--rm`) |
 | `stop [names...]` / `down` | Stop containers |
@@ -66,7 +69,8 @@ asb [global options] <command> [options] [args...]
 | `logs [docker args]` | Container logs (`asb logs -f`) |
 
 Global options: `-s/--sandbox <name>`, `-n/--dry-run`, `-v/--verbose`,
-`--[no-]color`. `ls`, `show`, and `config get` take `--json`.
+`--[no-]color`. `ls`, `show`, `image ls`, `image show`, and `config get`
+take `--json`.
 
 **Which sandbox:** `-s <name>` (or a name argument), then `$ASB_SANDBOX`,
 then the sandbox whose workspace, home, or mount source contains the
@@ -85,9 +89,12 @@ change its own settings:
 
 ```
 ~/.config/asb/
-  config.yaml            # settings, defaults for all sandboxes, images
+  config.yaml            # settings and defaults for all sandboxes
   sandboxes/
     widget.yaml          # one file per sandbox; the file name is its name
+  images/
+    dev/                 # one directory per image; see Images below
+      Dockerfile
 ```
 
 Files are validated against the JSON Schemas in [`schemas/`](schemas). The
@@ -116,7 +123,7 @@ env: {NODE_ENV: development}
 | Key | Default | Meaning |
 |---|---|---|
 | `description` | | Shown by `asb ls` |
-| `image` | `default` | Image name, from `images` |
+| `image` | `default` | Image name; see [Images](#images) |
 | `home` | `~/.local/share/asb/homes/<name>` | Host directory mounted as `$HOME` (`/home/<user>`) |
 | `workspace` | *(none)* | Host directory mounted at `~/workspace` |
 | `workdir` | `~/workspace`, else `~` | Container working directory |
@@ -145,25 +152,157 @@ settings:
   # gid: 1000
   # docker: podman     # docker compatible CLI
 defaults:              # applied to every sandbox
+  image: dev
   resources: {cpus: 4, memory: 16g}
-images:
-  node:
-    context: ~/src/images/node
-    # dockerfile: Dockerfile
-    # tag: asb-node
-    # args: {NODE_MAJOR: "24"}
 ```
 
 A sandbox's own values override `defaults`; `resources` and `env` merge key
-by key, and lists replace. The `default` image is
-[`images/default/Dockerfile`](images/default/Dockerfile). `asb build` passes
-`USERNAME`, `UID`, and `GID` build args to every image.
+by key, and lists replace. `user`, `uid`, and `gid` are also passed to every
+image build (see [Images](#images)).
 
 ```sh
 asb config get --show-origin               # where each setting comes from
 asb config set defaults.resources.memory 8g
 asb config set docker podman
 ```
+
+## Images
+
+An image is a **directory**: a Dockerfile plus anything it `COPY`s. That
+directory is Docker's *build context*, the set of files sent to the build and
+the only files `COPY` and `ADD` can see, which is why the files an image
+needs sit next to its Dockerfile.
+
+### Built-in images
+
+Each builds on the one before it:
+
+| Image | Built from | Adds | Use it for |
+|---|---|---|---|
+| `base` | `ubuntu:24.04` | git, curl, ssh, less, and your user | Lightweight tool or agent runs |
+| `default` | `base` | build-essential, Python, Node.js LTS, gh, ripgrep, jq, rsync, tree | General development; sandboxes use it unless they set `image` |
+| `playwright` | `default` | System libraries and fonts for Playwright's chromium, firefox, and webkit | Browser tests |
+
+They live in asb's [`images/`](images) directory. None of them has an
+editor or other personal tools: those go in an image of your own built from
+one of these.
+
+### Your images
+
+Your images go in `~/.config/asb/images/<name>/`, one directory each, and are
+tagged `asb-<name>`. A directory named after a built-in image (for example
+`default`) replaces it, and images built from that one then build on yours.
+
+```
+~/.config/asb/images/
+  dev/
+    Dockerfile           # required, unless image.yaml sets context
+    image.yaml           # optional
+    bashrc               # anything the Dockerfile COPYs
+```
+
+| `image.yaml` key | Default | Meaning |
+|---|---|---|
+| `description` | | Shown by `asb image ls` |
+| `tag` | `asb-<name>` | Docker image tag |
+| `args` | `{}` | Build args, in addition to `USERNAME`, `UID`, and `GID` |
+| `context` | this directory | Build somewhere else; absolute, `~/...`, or relative to this directory |
+| `dockerfile` | `Dockerfile` | Dockerfile path, relative to the context |
+
+### How builds work
+
+- **Your user.** `asb build` passes `USERNAME`, `UID`, and `GID` build args
+  (from the `user`, `uid`, and `gid` settings) to every image. `base` uses
+  them to create a user matching you, so files a sandbox creates in its
+  mounts are owned by you. Images built from it already have that user; they
+  install packages as root and switch back:
+
+  ```dockerfile
+  FROM asb-default
+  USER root
+  RUN apt-get update && apt-get install -y vim && rm -rf /var/lib/apt/lists/*
+  ARG USERNAME=agent
+  USER ${USERNAME}
+  ```
+
+- **Base images first.** A `FROM` line naming another asb image's tag
+  (`FROM asb-default`) makes `asb build` build that image first, so
+  `asb build playwright` builds base, default, and playwright. Docker's
+  layer cache makes unchanged images quick. `--no-bases` builds only the
+  named images. `FROM ${VARIABLE}` is not detected.
+- **Rebuilding.** Run `asb build` again after editing an image. Running
+  containers keep the image they started with until `asb restart`. After
+  changing `user`, `uid`, or `gid`, rebuild your images.
+
+`asb image ls` lists all images and `asb image show <name>` shows an image's
+files and what it is built from.
+
+### Common setups
+
+**Use the built-ins.** `asb build` builds `default` (and `base`), which
+every sandbox uses by default. For browser tests, set `image: playwright` in
+the sandbox, run `asb build playwright`, then `npx playwright install` in
+the sandbox: the browsers download into its home.
+
+**A personal image for interactive shells**, with your editor and tools:
+
+```sh
+asb image new dev -d "my shell tools"     # a Dockerfile FROM asb-default
+$EDITOR ~/.config/asb/images/dev/Dockerfile
+asb build dev
+asb config set defaults.image dev         # for every sandbox; or image: dev in one
+```
+
+[`examples/images/dev`](examples/images/dev) is a ready-made one with vim,
+tmux, tig, fzf, htop, and btop: `cp -r examples/images/dev
+~/.config/asb/images/` from an asb checkout, then edit it. Shell config every
+sandbox should share (a system `bashrc`, `vimrc`) can be `COPY`ed into the
+image; per-sandbox config belongs in that sandbox's home.
+
+**Lightweight runs** of a tool or agent, with the small `base` image:
+
+```yaml
+# ~/.config/asb/sandboxes/tool.yaml
+image: base
+workspace: ~/scratch/tool
+network: none
+resources: {cpus: 1, memory: 1g, pids: 256}
+```
+
+```sh
+asb build base
+asb -s tool run ./check.sh                # a throwaway container per run
+```
+
+**Change a built-in image completely.** `asb image new mine --copy default`
+copies the whole build context to `~/.config/asb/images/mine/` to edit
+freely. Unlike building `FROM asb-default`, a copy doesn't pick up later
+changes to asb's image. Naming the copy `default` (`asb image new default
+--copy default`) replaces the built-in, so `playwright` and your images
+built from `asb-default` build on your version.
+
+**A project's own Dockerfile.** Point an image at it instead of copying it:
+
+```yaml
+# ~/.config/asb/images/widget/image.yaml
+description: the widget project's dev image
+context: ~/src/widget
+dockerfile: docker/dev.Dockerfile
+```
+
+The project's Dockerfile should build `FROM asb-base` (or another asb
+image), or create a user from `USERNAME`, `UID`, and `GID` the way
+[`images/base/Dockerfile`](images/base/Dockerfile) does.
+
+### Image or home?
+
+An **image** is shared by every sandbox that uses it, changes only when you
+rebuild it, and can't be changed from inside a sandbox: put system packages
+and tools you want everywhere there. A sandbox's **home** belongs to that
+sandbox and persists across containers: per-project tools fit there.
+`npm install -g` (the default image sets `NPM_CONFIG_PREFIX` to
+`~/.npm-global`), `pip install --user`, and installer scripts that write to
+`~/.local/bin` all land in the home, and both directories are on `PATH`.
 
 ## Security model
 
