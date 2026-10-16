@@ -60,6 +60,7 @@ asb [global options] <command> [options] [args...]
 | `image ls` | Built-in and your images, whether they are built, and what each is built from |
 | `image new <name>` | Create an image directory (`--from <image>`, `--copy <image>`, `-d`) |
 | `image show [name]` | An image's files, tag, args, and base images |
+| `audit [name]` | Check the sandbox's mounts for things the host would run (`--accept`, `--all`); see [Audit](#audit) |
 | `build [images...]` | Build images and the asb images they are built from (`--no-bases`, `--no-cache`, `--pull`); default: the current sandbox's image |
 | `config get\|set\|unset\|path\|validate\|edit` | Settings and sandbox defaults in `config.yaml` |
 | `completion bash\|zsh\|fish` | Print a shell completion script |
@@ -72,8 +73,8 @@ asb [global options] <command> [options] [args...]
 | `logs [docker args]` | Container logs (`asb logs -f`) |
 
 Global options: `-s/--sandbox <name>`, `-n/--dry-run`, `-v/--verbose`,
-`--[no-]color`. `ls`, `show`, `image ls`, `image show`, and `config get`
-take `--json`.
+`--[no-]color`. `ls`, `show`, `image ls`, `image show`, `audit`, and
+`config get` take `--json`.
 
 **Which sandbox:** `-s <name>` (or a name argument), then `$ASB_SANDBOX`,
 then the sandbox whose workspace, home, or mount source contains the
@@ -342,17 +343,35 @@ write only what you mount, as your uid, with a reduced kernel surface.**
 What every container gets:
 
 - **Non-root, your uid/gid**: `--user UID:GID`; created files are owned by
-  you.
+  you. uid and gid 0 are refused (the default if asb itself runs as root).
 - **`--security-opt no-new-privileges`**: setuid binaries can't escalate.
 - **`--cap-drop ALL`**: drops every Linux capability.
 - **`--pids-limit`, `--cpus`, `--memory`**: resource ceilings.
-- **`/tmp` is a `noexec,nosuid` tmpfs**: no running dropped payloads from
-  `/tmp`.
+- **`/tmp` is a `noexec,nosuid` tmpfs.**
 - **`--rm`**: the container is disposable; state lives only in the mounts.
 - **`--mount type=bind`**: a missing source is an error, instead of a root
   owned directory created by `-v`.
+- **Ports on 127.0.0.1** unless you give an address.
 - Optional read-only root filesystem (`readonly: true`) and
   `network: none`.
+
+### Mount checks
+
+Before a container starts, asb refuses mounts that would let a sandbox
+change the host's own files or its own settings:
+
+- A writable mount (the home, the workspace, or a mount without
+  `readonly`) may not be or contain your home directory, asb's config
+  directory, or asb's data directory, nor be inside asb's files (other than
+  the sandbox homes). `workspace: "~"` is refused, for example: the sandbox
+  could edit its own file in `~/.config/asb` to mount `/` or add
+  `--privileged`.
+- No mount source may be reached through a symlink inside any sandbox's
+  writable mounts. If one sandbox's workspace contains a directory another
+  sandbox mounts, the first could replace it with a link to `~`.
+- `asb build` warns when an image's build context is in a sandbox's
+  writable mounts (a project's own Dockerfile, say): that sandbox then
+  decides what the image contains.
 
 ### Protected paths
 
@@ -360,36 +379,93 @@ Anything in a writable mount that the *host* later runs is a way out of the
 sandbox. With an mpm workspace mounted, a sandbox could add an alias to
 `.mpm/config.yaml`, add a git hook, or set `core.fsmonitor` or
 `core.hooksPath` in a repo's `.git/config`, which then runs the next time
-you (or `mpm status`) run git on the host. So these workspace paths are
-mounted read-only by default:
+you, your shell prompt, or `mpm status` run git there. So these workspace
+paths are mounted read-only by default:
 
 ```yaml
 protect:              # relative to the workspace; * matches one name
   - .mpm
+  - .git              # only a .git *file*: worktrees, submodule checkouts
   - .git/config
   - .git/hooks
+  - .git/modules/*/config
+  - .git/modules/*/hooks
+  - '*/.git'
   - '*/.git/config'
   - '*/.git/hooks'
+  - '*/.git/modules/*/config'
+  - '*/.git/modules/*/hooks'
 ```
 
 A read-only `.git/config` makes git commands that write config fail in the
 sandbox (`git remote add`, `git push -u`, `git branch -u`). Set your own
 `protect` list, for example `protect: [.mpm]`, to loosen this for trusted
-agents. Paths are found when the container starts, so repos cloned later are
-not covered until a restart. `asb show` lists what is protected.
+agents. Paths are found when the container starts, so repos cloned later
+are not covered until a restart. A protected path that is a symlink, or a
+protected file with another hard link, stops the start, since a read-only
+mount can't cover it. `asb show` lists what is protected.
 
-This is defense in depth, not a boundary: a determined process can rename a
-repo directory and create a new one in its place. After running truly
-untrusted code, review the workspace before running host tools in it.
+### Audit
 
-### What it does not do
+Read-only mounts only cover files that already exist. A sandbox can still
+**create** files the host would act on: a `.git/commondir` that points git
+at a config it wrote, a `.git` file naming another git directory, a new repo
+with hooks, or an `.envrc`. `asb audit` looks for these in a sandbox's
+writable workspace and mounts:
 
-This is a container, not a VM: a kernel exploit escapes it. Don't add
-`--privileged` or capabilities with `runArgs` unless you need them, and keep
-mounts scoped to exactly what the sandbox should touch. For network egress
-control, use `network: none`, or a custom Docker network with an egress
-firewall or proxy (built-in allowlists are planned, see
-[PLAN.md](PLAN.md)).
+- git directories using `commondir` (outside `.git/worktrees`), and `.git`
+  files whose git directory is outside the mounts;
+- git config settings that run commands: `core.fsmonitor`,
+  `core.hooksPath`, `core.sshCommand`, pagers and editors, `!` aliases,
+  filters, diff and merge drivers, credential helpers, includes, and more;
+- executable git hooks;
+- changes to `.envrc`, `.npmrc`, `.yarnrc.yml`, `.vscode/tasks.json`,
+  `.vscode/settings.json`, and `.mpm/config.yaml`.
+
+It looks five directory levels deep (skipping `node_modules`). Findings are
+compared with a baseline kept in asb's data directory, so setups you have
+reviewed (your own hooks, git-lfs filters) aren't reported again. The first
+`asb start` saves a baseline; after that, `start`, `stop`, and `run` print
+anything new or changed. Review it before running git or other tools there
+on the host, then accept it:
+
+```sh
+asb audit widget           # new and changed findings; exits 1 if any
+asb audit widget --all     # everything found
+asb audit widget --accept  # save the current state as the baseline
+```
+
+### Limitations
+
+This is a container, not a VM, and the checks above reduce risk rather
+than remove it. Keep mounts scoped to exactly what a sandbox should touch,
+and don't add `--privileged` or capabilities with `runArgs` unless you need
+them.
+
+- **Kernel exploits** escape containers. There is no user namespace
+  remapping: the container's uid is your uid. Rootless Docker (or
+  `userns-remap`) limits the damage.
+- **The network.** The default `bridge` network can reach services on your
+  host (through the bridge gateway, or `host.docker.internal` on Docker
+  Desktop), your LAN, other sandboxes on the same network, and cloud
+  metadata endpoints (`169.254.169.254`, which can hand out instance
+  credentials). Use `network: none` when a sandbox doesn't need the
+  network, or a custom network with an egress firewall or proxy (built-in
+  allowlists are planned, see [PLAN.md](PLAN.md)).
+- **`/tmp` noexec** only stops running files directly; `bash /tmp/x`
+  works, and the home and workspace allow running files anyway.
+- **Files host tools run** go beyond what the audit checks: Makefiles,
+  `package.json` scripts, and test configs all run when you use them on
+  the host. Protected paths only reach repos one directory below the
+  workspace, and `*` skips names starting with `.`; the audit looks deeper.
+- **Races.** A sandbox running when another container starts (an
+  `asb run` next to a running sandbox, or two sandboxes sharing a
+  workspace) could swap a path between asb's checks and docker mounting
+  it.
+- **Images** come from the network when built: Ubuntu, uv, and Playwright
+  by version tag rather than digest, Node.js from NodeSource's install
+  script, and the GitHub CLI from its apt repository. The build caches are
+  shared by all image builds, so only build Dockerfiles you trust.
 
 ## Shell completion
 
@@ -406,8 +482,9 @@ asb completion fish > ~/.config/fish/completions/asb.fish
 | Code | Meaning |
 |---|---|
 | 0 | Success |
-| 1 | A docker command failed (`sh` and `run` return the command's own code) |
+| 1 | A docker command failed (`sh` and `run` return the command's own code), or `audit` found new or changed things |
 | 2 | Usage or config error |
+| 128 + n | The command was killed by signal n (130 for Ctrl-C) |
 
 ## Development
 

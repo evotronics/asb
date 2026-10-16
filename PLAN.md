@@ -162,26 +162,44 @@ the next time you (or `mpm status`) run git on the host. asb mounts
 ```yaml
 protect:              # relative to the workspace; * matches one name
   - .mpm
+  - .git              # a .git file (worktree, submodule), not a directory
   - .git/config
   - .git/hooks
-  - '*/.git/config'
-  - '*/.git/hooks'
+  - .git/modules/*/config
+  - .git/modules/*/hooks
+  - '*/.git'          # and the same for each repo one level down
+  - ...
 ```
 
-✅ The list above is the default. Protecting hooks alone is not enough,
-since `.git/config` can point `core.hooksPath` anywhere. A read-only
+✅ This is the default. Protecting hooks alone is not enough, since
+`.git/config` can point `core.hooksPath` anywhere. A read-only
 `.git/config` makes git commands that write config fail inside the
 sandbox (`git remote add`, `git push -u`, `git branch -u`); set your own
 `protect` list (for example `[.mpm]`) to loosen this for trusted agents.
 Paths are expanded when the container starts, so repos cloned later are
-not covered until a restart. Only existing paths are mounted; symlinks
-can't be covered by a mount and are reported.
+not covered until a restart. Only existing paths are mounted; a symlinked
+protected path, or one with another hard link, stops the start.
 
-This is defense in depth, not a boundary: it stops casual or accidental
-changes and naive prompt injection, but a determined process can still
-rename a repo directory and create a new one in its place. After running
-truly untrusted code, review the workspace before running host tools in
-it.
+This is defense in depth, not a boundary: a mount can't stop a sandbox
+creating files (a `.git/commondir` pointing git at a config it wrote, a
+new repo with hooks), or renaming a repo directory and creating a new one
+in its place.
+
+✅ **Audit.** `asb audit` scans a sandbox's writable mounts for such
+files: commondir, `.git` files pointing outside the mounts, git config
+that runs commands (read with `git config --file --no-includes`, which
+only parses), executable hooks, and changes to files host tools act on
+(`.envrc`, `.npmrc`, `.vscode/tasks.json`, `.mpm/config.yaml`). Findings
+are compared with a reviewed baseline in the data directory; start, stop,
+and run report changes.
+
+✅ **Mount checks.** Writable mounts may not cover the home directory or
+asb's config or data directory (a sandbox could edit its own settings),
+mount sources may not go through symlinks inside any sandbox's writable
+mounts, and uid/gid 0 are refused. Ports publish on 127.0.0.1 by default.
+
+Known limitations are listed in the README (network reach, no user
+namespaces, races between checks and mounting, image supply chain).
 
 ## 7. CLI
 
