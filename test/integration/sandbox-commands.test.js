@@ -206,6 +206,13 @@ describe('config command', () => {
     expect(result.code).toBe(2);
     expect(result.stderr).toMatch(/\/settings\/uid: must be integer/);
 
+    result = await asb(['config', 'set', 'defaults.description', '@foo']);
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/Invalid value "@foo": .*quote it/);
+    result = await asb(['config', 'set', 'settings.docker.x', 'y']);
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/Unable to set "settings.docker.x"/);
+
     result = await asb(['config', 'set', 'defaults.ports', '[9323, 5173]']);
     expect(result.code).toBe(0);
     result = await asb(['config', 'get', 'defaults.ports', '--json']);
