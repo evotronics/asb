@@ -117,7 +117,7 @@ mounts:
   - source: /data/sets
     target: /data
     readonly: true
-ports: [5173-5177, 9323, "127.0.0.1:8080:80"]
+ports: [5173-5177, 9323, "8080:80"]       # on 127.0.0.1; "0.0.0.0:9323" for all
 network: bridge
 resources: {memory: 8g}
 env: {NODE_ENV: development}
@@ -132,7 +132,7 @@ env: {NODE_ENV: development}
 | `workdir` | `~/workspace`, else `~` | Container working directory |
 | `mounts` | `[]` | Extra bind mounts; `SOURCE:TARGET[:ro\|rw]` or `{source, target, readonly}` |
 | `protect` | see [below](#protected-paths) | Workspace paths mounted read-only |
-| `ports` | `[]` | Published ports. A bare port or range keeps its number on the host; use `HOST:CONTAINER` or `IP:HOST:CONTAINER` to remap |
+| `ports` | `[]` | Published ports, on 127.0.0.1 only unless you give an address (`0.0.0.0:9323` for every interface). A port or range without a host port keeps its number on the host; use `HOST:CONTAINER` or `IP:HOST:CONTAINER` to remap |
 | `network` | `bridge` | `bridge`, `none`, or a Docker network name |
 | `resources` | `{cpus: 4, memory: 16g, pids: 2048}` | Limits |
 | `env` | `{}` | Container environment variables |

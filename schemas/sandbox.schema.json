@@ -59,7 +59,7 @@
       }
     },
     "ports": {
-      "description": "Published ports. A bare port or range keeps its number on the host; use HOST:CONTAINER or IP:HOST:CONTAINER to remap.",
+      "description": "Published ports, on 127.0.0.1 unless an address is given (0.0.0.0:9323 for every interface). A port or range without a host port keeps its number on the host; use HOST:CONTAINER or IP:HOST:CONTAINER to remap.",
       "type": "array",
       "items": {
         "oneOf": [

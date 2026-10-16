@@ -39,7 +39,7 @@ describe('container commands', () => {
     const args = calls[1];
     expect(args.slice(0, 5)).toEqual(
       ['run', '-itd', '--rm', '--name', 'asb-widget']);
-    expect(flag(args, '--publish')).toBe('9323:9323');
+    expect(flag(args, '--publish')).toBe('127.0.0.1:9323:9323');
     const ws = path.join(t.home, 'ws', 'widget');
     expect(mounts(args)).toEqual([
       `type=bind,source=${t.dir}/data/asb/homes/widget,target=/home/agent`,
