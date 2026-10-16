@@ -184,6 +184,16 @@ describe('container commands', () => {
     expect(result.stderr).toMatch(/Unknown sandbox "nope"/);
   });
 
+  it('only pulls images that are not built from asb images', async () => {
+    const result = await asb(['build', '--pull', 'playwright']);
+    expect(result.code).toBe(0);
+    const pulls = (await t.calls()).filter(c => c[0] === 'build')
+      .map(c => [flag(c, '--tag'), c.includes('--pull')]);
+    expect(pulls).toEqual([
+      ['asb-base', true], ['asb-default', false], ['asb-playwright', false]
+    ]);
+  });
+
   it('builds base images first', async () => {
     const tags = async () => (await t.calls()).filter(c => c[0] === 'build')
       .map(c => flag(c, '--tag'));
