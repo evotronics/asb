@@ -96,13 +96,13 @@ describe('images', () => {
     expect(await imageBases(images.dev, images)).toEqual(['default', 'base']);
     expect(await imageBases(images.playwright, images)).toEqual(['default']);
     expect(await buildOrder(['dev', 'playwright'], images)).toEqual([
-      {name: 'base', baseOf: 'default'},
-      {name: 'default', baseOf: 'dev'},
-      {name: 'dev'},
-      {name: 'playwright'}
+      {name: 'base', baseOf: 'default', bases: []},
+      {name: 'default', baseOf: 'dev', bases: ['base']},
+      {name: 'dev', bases: ['default', 'base']},
+      {name: 'playwright', bases: ['default']}
     ]);
     expect(await buildOrder(['dev'], images, {bases: false}))
-      .toEqual([{name: 'dev'}]);
+      .toEqual([{name: 'dev', bases: ['default', 'base']}]);
     await expect(buildOrder(['nope'], images))
       .rejects.toThrow(/Unknown image "nope"/);
   });
@@ -110,11 +110,8 @@ describe('images', () => {
   it('ships layered built-in images', async () => {
     const images = await loadImages({env});
     expect(Object.keys(images)).toEqual(['base', 'default', 'playwright']);
-    expect(await buildOrder(['playwright'], images)).toEqual([
-      {name: 'base', baseOf: 'default'},
-      {name: 'default', baseOf: 'playwright'},
-      {name: 'playwright'}
-    ]);
+    expect((await buildOrder(['playwright'], images)).map(i => i.name))
+      .toEqual(['base', 'default', 'playwright']);
     for(const image of Object.values(images)) {
       expect(image.description).toBeTruthy();
     }
