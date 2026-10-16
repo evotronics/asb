@@ -54,6 +54,8 @@ describe('image commands', () => {
     expect(result.code).toBe(0);
     expect(result.stdout).toMatch(/Edit .*Dockerfile, then: asb build dev/);
     expect(await read('dev/Dockerfile')).toMatch(/^FROM asb-default$/m);
+    expect(await read('dev/Dockerfile'))
+      .toMatch(/^# RUN npm install -g --prefix \/usr\/local /m);
     expect(await read('dev/image.yaml')).toBe('description: My tools\n');
 
     await asb(['image', 'new', 'tiny', '--from', 'base']);

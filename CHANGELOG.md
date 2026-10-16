@@ -23,12 +23,14 @@
   `home/` next to the script.
 - **BREAKING**: The single Dockerfile is split into layered built-in
   images, each building on the one before: `base` (Ubuntu with git, curl,
-  ssh, and your user, for lightweight runs), `default` (development tools:
-  build-essential, Python, Node.js, gh, ripgrep, jq), and `playwright`
+  ssh, procps, a UTF-8 locale, and your user, for lightweight runs),
+  `default` (development tools: build-essential, Node.js, Python with uv,
+  gh, ripgrep, fd, jq, ast-grep, shellcheck, sqlite3), and `playwright`
   (browser dependencies). Sandboxes use `default` unless they set `image`.
-  The editor and terminal tools (vim, tmux, tig, fzf, htop, btop) moved
-  to an example personal image, `examples/images/dev`. `rebuild` is now
-  `build --no-cache`.
+  pip is replaced by uv, since Ubuntu's system Python refuses pip
+  installs. The editor and terminal tools (vim, tmux, tig, fzf, htop,
+  btop) moved to an example personal image, `examples/images/dev`.
+  `rebuild` is now `build --no-cache`.
 - **BREAKING**: `config` (print the resolved configuration) is now `show`
   for a sandbox and `config get` for settings.
 - Bind mounts use `--mount type=bind`, which fails on a missing source
