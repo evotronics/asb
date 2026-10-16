@@ -43,7 +43,7 @@ describe('sandbox commands', () => {
       '  - 8080:80',
       '',
       '# Other settings include:',
-      '# image: default',
+      '# image: default       # or base, playwright, or one of yours',
       ''
     ].join('\n');
     expect(text.slice(0, expected.length)).toBe(expected);

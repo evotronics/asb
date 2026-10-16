@@ -34,6 +34,9 @@ describe('completion', () => {
       ['get', 'set', 'unset', 'path', 'validate', 'edit']);
     expect(await words('config', 'set', 'do')).toEqual(['docker']);
     expect(await words('completion', 'z')).toEqual(['zsh']);
+    expect(await words('image', '')).toEqual(['ls', 'new', 'show']);
+    expect(await words('image', 'new', 'x', '--from', 'b')).toEqual(['base']);
+    expect(await words('image', 'show', 'p')).toEqual(['playwright']);
     expect(await words('start', '--')).toContain('--sandbox');
   });
 
