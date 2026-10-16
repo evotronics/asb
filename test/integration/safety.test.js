@@ -62,6 +62,22 @@ describe('mount safety', () => {
       expect((await asb(['-n', 'start', 'c'])).code).toBe(0);
     });
 
+  it('refuses to start when a protected path is a symlink', async () => {
+    await writeFiles(t.home, {'ws/repo/.git/config': ''});
+    await fs.symlink(path.join(t.home, 'secret'),
+      path.join(t.home, 'ws', 'repo', '.git', 'hooks'));
+    await sandbox('w', 'workspace: ~/ws\n');
+    let result = await asb(['-n', 'start', 'w']);
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/can't be protected/);
+    expect(result.stderr).toMatch(/repo\/\.git\/hooks is a symlink/);
+
+    // unless it's taken out of the protect list
+    await sandbox('w', 'workspace: ~/ws\nprotect: [.mpm, "*/.git/config"]\n');
+    result = await asb(['-n', 'start', 'w']);
+    expect(result.code).toBe(0);
+  });
+
   it('refuses to run sandboxes as root', async () => {
     await fs.appendFile(path.join(t.configDir, 'config.yaml'), '  uid: 0\n');
     await sandbox('x', '');
