@@ -114,6 +114,26 @@ describe('sandbox commands', () => {
     expect(result.stdout).toMatch(/bad +invalid .*unknown image "nope"/);
   });
 
+  it('keeps working around a sandbox with broken settings', async () => {
+    await writeFiles(t.configDir, {'sandboxes/bad.yaml': 'image: nope\n'});
+    let result = await asb(['new', 'good']);
+    expect(result.code).toBe(0);
+    result = await asb(['config', 'set', 'defaults.network', 'none']);
+    expect(result.code).toBe(0);
+    expect((await asb(['stop', 'bad'])).code).toBe(0);
+    expect((await t.calls()).at(-1)).toEqual(['stop', 'asb-bad']);
+    expect((await asb(['status', 'bad'])).code).toBe(0);
+
+    // but a change to the broken sandbox must fix it
+    result = await asb(['config', 'set', 'defaults.image', 'nope2']);
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/sandbox "good" image: unknown image/);
+
+    result = await asb(['rm', 'bad']);
+    expect(result.code).toBe(0);
+    expect(result.stdout).toMatch(/deleted .*bad\.yaml/);
+  });
+
   it('removes a sandbox but keeps its home', async () => {
     await asb(['new', 'widget']);
     await t.setContainers([{name: 'asb-widget', state: 'running'}]);
