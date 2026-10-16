@@ -143,7 +143,7 @@
     "hostPath": {
       "description": "An absolute path, or one starting with ~/ (your home).",
       "type": "string",
-      "pattern": "^(~|~/|/)[^\\u0000-\\u001f\\u007f-\\u009f]*$"
+      "pattern": "^(~|(~/|/)[^\\u0000-\\u001f\\u007f-\\u009f]*)$"
     },
     "containerPath": {
       "description": "A container path; ~ and relative paths are in the container home.",

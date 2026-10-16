@@ -106,13 +106,15 @@ describe('config', () => {
 
   it('reports invalid files', async () => {
     await writeFiles(env.ASB_CONFIG_DIR, {
-      'sandboxes/bad.yaml': 'home: relative/path\nbogus: 1\n'
+      'sandboxes/bad.yaml': 'home: relative/path\nworkspace: ~other/ws\n' +
+        'bogus: 1\n'
     });
     await expect(loadConfig({env})).rejects.toMatchObject({
       message: expect.stringMatching(/Invalid ".*bad\.yaml"/),
       details: [
         '(top level): unknown property "bogus"',
-        '/home: must be an absolute path or start with "~/"'
+        '/home: must be an absolute path or start with "~/"',
+        '/workspace: must be an absolute path or start with "~/"'
       ]
     });
   });
@@ -124,11 +126,14 @@ describe('config', () => {
     await fs.rm(path.join(env.ASB_CONFIG_DIR, 'sandboxes', 'Bad.yaml'));
     await writeFiles(env.ASB_CONFIG_DIR, {
       'sandboxes/a.yaml': 'image: nope\n',
-      'sandboxes/b.yaml': 'workspace: /w\nmounts: [/x:workspace]\n'
+      'sandboxes/b.yaml': 'workspace: /w\nmounts: [/x:workspace]\n',
+      'sandboxes/d.yaml': 'workspace: /w\nmounts: ["/x:~/workspace/"]\n'
     });
     const config = await loadConfig({env});
     expect(() => getSandbox(config, 'a')).toThrow(/unknown image "nope"/);
     expect(() => getSandbox(config, 'b'))
+      .toThrow(/"\/home\/agent\/workspace" is already used by workspace/);
+    expect(() => getSandbox(config, 'd'))
       .toThrow(/"\/home\/agent\/workspace" is already used by workspace/);
     expect(() => getSandbox(config, 'c')).toThrow(/Unknown sandbox "c"/);
   });

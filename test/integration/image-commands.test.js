@@ -83,13 +83,12 @@ describe('image commands', () => {
   });
 
   it('copies an image', async () => {
-    await writeFiles(t.home, {
-      'proj/docker/Dev': 'FROM ubuntu:24.04\nCOPY setup.sh /\n',
-      'proj/setup.sh': 'echo hi\n'
-    });
     await writeFiles(imagesDir(), {
-      'proj/image.yaml': 'context: ~/proj\ndockerfile: docker/Dev\n' +
-        'tag: me/proj\nargs: {A: 1}\n'
+      'proj/docker/Dev': 'FROM ubuntu:24.04\nCOPY setup.sh /\n',
+      'proj/setup.sh': 'echo hi\n',
+      'proj/image.yaml': 'dockerfile: docker/Dev\ntag: me/proj\n' +
+        'args: {A: 1}\n',
+      'ext/image.yaml': 'context: ~/src/ext\n'
     });
     let result = await asb(['image', 'new', 'mine', '--copy', 'default']);
     expect(result.code).toBe(0);
@@ -106,6 +105,22 @@ describe('image commands', () => {
     result = await asb(['image', 'show', 'proj2', '--json']);
     expect(JSON.parse(result.stdout)).toMatchObject(
       {tag: 'asb-proj2', context: path.join(imagesDir(), 'proj2')});
+
+    // a context outside the image directory could be a whole project
+    result = await asb(['image', 'new', 'ext2', '--copy', 'ext']);
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/builds from ~\/src\/ext, outside its/);
+  });
+
+  it('rejects images with the same tag', async () => {
+    await writeFiles(imagesDir(), {
+      'mine/Dockerfile': 'FROM asb-base\n',
+      'mine/image.yaml': 'tag: asb-default:latest\n'
+    });
+    const result = await asb(['image', 'ls']);
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(
+      /Images "default" and "mine" have the same tag/);
   });
 
   it('shows an image', async () => {

@@ -117,6 +117,16 @@ describe('images', () => {
     }
   });
 
+  it('matches tags with registry ports', async () => {
+    await writeFiles(userDir, {
+      'reg/Dockerfile': 'FROM ubuntu:26.04\n',
+      'reg/image.yaml': 'tag: localhost:5000/reg\n',
+      'app/Dockerfile': 'FROM localhost:5000/reg:latest\n'
+    });
+    const images = await load();
+    expect(await imageBases(images.app, images)).toEqual(['reg']);
+  });
+
   it('reports cycles and missing Dockerfiles', async () => {
     await writeFiles(userDir, {
       'a/Dockerfile': 'FROM asb-b\n',
