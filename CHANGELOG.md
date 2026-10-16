@@ -14,15 +14,21 @@
 - **BREAKING**: YAML config in `~/.config/asb/` (or `$XDG_CONFIG_HOME/asb`,
   or `$ASB_CONFIG_DIR`), validated against JSON Schemas in `schemas/`,
   replaces `asb.conf` and the `ASB_*` environment variables. `config.yaml`
-  holds settings (`user`, `uid`, `gid`, `docker`), `defaults` for every
-  sandbox, and `images`. Config is kept out of the sandboxes' mounts so a
+  holds settings (`user`, `uid`, `gid`, `docker`) and `defaults` for every
+  sandbox. Config is kept out of the sandboxes' mounts so a
   sandbox can't change its own settings. Existing `asb.conf` files must be
   converted by hand (see [PLAN.md](PLAN.md#10-migration-from-the-shell-version)).
 - **BREAKING**: The default home directory is
   `~/.local/share/asb/homes/NAME` (created on first start) instead of
   `home/` next to the script.
-- **BREAKING**: The Dockerfile moved to `images/default/Dockerfile`.
-  `rebuild` is now `build --no-cache`.
+- **BREAKING**: The single Dockerfile is split into layered built-in
+  images, each building on the one before: `base` (Ubuntu with git, curl,
+  ssh, and your user, for lightweight runs), `default` (development tools:
+  build-essential, Python, Node.js, gh, ripgrep, jq), and `playwright`
+  (browser dependencies). Sandboxes use `default` unless they set `image`.
+  The editor and terminal tools (vim, tmux, tig, fzf, htop, btop) moved
+  to an example personal image, `examples/images/dev`. `rebuild` is now
+  `build --no-cache`.
 - **BREAKING**: `config` (print the resolved configuration) is now `show`
   for a sandbox and `config get` for settings.
 - Bind mounts use `--mount type=bind`, which fails on a missing source
@@ -48,8 +54,18 @@
 - `config get|set|unset|path|validate|edit`. Edits keep comments, are
   validated before writing, and show a diff with `--dry-run`.
   `config get --show-origin` shows where settings come from.
-- Named `images` with their own build context, Dockerfile, tag, and build
-  args. `build` builds the current sandbox's image by default.
+- Your own images: a directory, `~/.config/asb/images/NAME/`, holding a
+  Dockerfile and the files it copies (its build context), with an optional
+  `image.yaml` for a description, tag, build args, or a context elsewhere
+  (such as a project's own Dockerfile). An image named after a built-in
+  one replaces it.
+- `build` builds the asb images a Dockerfile is built `FROM` first (so
+  `asb build playwright` builds base, default, and playwright), and builds
+  the current sandbox's image by default. `--no-bases` builds only the
+  named images.
+- `image ls|new|show`. `image new` creates an image directory with a
+  Dockerfile built `FROM` another image (`--from`, default: default), or a
+  copy of another image (`--copy`).
 - `settings.docker` to use a Docker compatible CLI such as podman.
 - Containers get a `--hostname` of the sandbox name and an `asb.sandbox`
   label.
