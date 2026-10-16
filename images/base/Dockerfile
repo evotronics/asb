@@ -4,13 +4,17 @@
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
+# ubuntu sets no locale; without one, some tools mangle non-ASCII text
+ENV LANG=C.UTF-8
 
+# procps: ps, kill, pkill, top (not in the ubuntu image)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     git \
     less \
     openssh-client \
+    procps \
     && rm -rf /var/lib/apt/lists/*
 
 # Create the sandbox user with your name / uid / gid so files created in
