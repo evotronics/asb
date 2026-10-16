@@ -58,7 +58,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # to the cache mount explicitly.
 RUN --mount=type=cache,target=/root/.npm \
     npm_config_cache=/root/.npm \
-    npm install -g --prefix /usr/local @ast-grep/cli
+    npm install -g --prefix /usr/local @ast-grep/cli@0.45.3
 
 # `npm install -g` in a sandbox goes to its home mount, as the sandbox user
 ENV NPM_CONFIG_PREFIX=${HOME}/.npm-global
