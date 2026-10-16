@@ -50,11 +50,26 @@
   it is inside the workspace, a mount, or the home.
 - Extra `mounts` (read-only or read-write), and `ports`, `env`, and
   `runArgs` as lists instead of word-split strings.
-- Protected paths: `.mpm`, `.git/config`, and `.git/hooks` in the workspace
-  and in each repo directory in it are mounted read-only by default, so a
-  sandbox can't plant mpm aliases, git hooks, or git config settings
-  (`core.fsmonitor`, `core.hooksPath`) that the host would later run.
-  Configurable with `protect`.
+- Protected paths: `.mpm`, and `.git` files, `.git/config`, `.git/hooks`,
+  and submodule configs and hooks in the workspace and in each repo
+  directory in it, are mounted read-only by default, so a sandbox can't
+  change mpm aliases, git hooks, or git config settings (`core.fsmonitor`,
+  `core.hooksPath`) that the host would later run. Configurable with
+  `protect`. A protected path that is a symlink, or has another hard link,
+  stops the start.
+- `audit` looks in a sandbox's writable mounts for things the host would
+  run that read-only mounts can't prevent a sandbox from creating: a
+  planted `.git/commondir`, `.git` files pointing elsewhere, git config
+  that runs commands, executable hooks, and changes to files such as
+  `.envrc`, `.npmrc`, and `.vscode/tasks.json`. Findings are compared with
+  a reviewed baseline (`--accept`); `start`, `stop`, and `run` report
+  changes.
+- Mount checks before a container starts: writable mounts may not cover
+  your home directory or asb's config or data directory (so a sandbox
+  can't edit its own settings), and mount sources may not go through
+  symlinks inside a sandbox's writable mounts. uid and gid 0 are refused.
+- Published ports are on 127.0.0.1 unless an address is given (the shell
+  version published on every interface).
 - `new`, `rm`, `ls`, `show` (`--docker` prints the `docker run` command),
   and `edit` commands to manage sandboxes.
 - `config get|set|unset|path|validate|edit`. Edits keep comments, are
