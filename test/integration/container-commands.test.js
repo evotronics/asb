@@ -98,6 +98,15 @@ describe('container commands', () => {
       '/home/agent/workspace', 'asb-widget', '/bin/bash']);
   });
 
+  it('matches container names exactly', async () => {
+    await writeFiles(t.configDir, {'sandboxes/a.b.yaml': ''});
+    await t.setContainers([{name: 'asb-a-b', state: 'running'}]);
+    const result = await asb(['start', 'a.b']);
+    expect(result.code).toBe(0);
+    expect((await t.calls())[0]).toEqual(
+      ['ps', '--quiet', '--filter', 'name=^asb-a\\.b$']);
+  });
+
   it('returns the exit code of the command', async () => {
     await t.setContainers([{name: 'asb-widget', state: 'running'}]);
     await t.setExit(3);
@@ -125,11 +134,16 @@ describe('container commands', () => {
     expect((await t.calls()).at(-1))
       .toEqual(['stop', 'asb-widget', 'asb-other']);
 
+    // restart waits for docker to remove the stopped --rm container
     await t.setContainers([{name: 'asb-widget', state: 'running'}]);
+    await fs.writeFile(path.join(t.env.FAKE_DOCKER_DIR, 'remove-lag'), '2');
     expect((await asb(['restart', 'widget'])).code).toBe(0);
     const calls = await t.calls();
-    expect(calls.slice(-4).map(c => c[0]))
-      .toEqual(['ps', 'stop', 'ps', 'run']);
+    expect(calls.slice(-7).map(c => c.slice(0, 2).join(' '))).toEqual([
+      'ps --quiet', 'stop asb-widget',
+      'ps --all', 'ps --all', 'ps --all',
+      'ps --quiet', 'run -itd'
+    ]);
 
     expect((await asb(['status', 'widget'])).code).toBe(0);
     expect((await t.calls()).at(-1)).toEqual(['ps', '--all',
