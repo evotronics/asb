@@ -7,7 +7,8 @@
  * `[{name, sandbox, state, status, ports}]`. `ps --quiet --filter name=^X$`
  * prints an id if X is running; `ps --format ...` with `{{.Names}}\t...`
  * prints containers labeled `asb.sandbox`. `$FAKE_DOCKER_DIR/exit` (optional)
- * holds the exit code for other commands.
+ * holds the exit code for other commands. `image ls` prints the
+ * `repository:tag` values in `$FAKE_DOCKER_DIR/images.json` (optional).
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -36,6 +37,12 @@ if(args[0] === 'ps') {
     }
   } else {
     process.stdout.write('NAMES  STATUS  PORTS\n');
+  }
+  process.exit(0);
+}
+if(args[0] === 'image' && args[1] === 'ls') {
+  for(const tag of JSON.parse(read('images.json', '[]'))) {
+    process.stdout.write(`${tag}\n`);
   }
   process.exit(0);
 }

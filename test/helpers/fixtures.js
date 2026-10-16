@@ -58,8 +58,8 @@ export const FAKE_DOCKER = path.join(import.meta.dirname, 'fake-docker.js');
  *   directory to content.
  *
  * @returns {Promise<object>} `{dir, home, configDir, env, calls(),
- *   setContainers(list), setExit(code)}`; `calls()` returns the fake
- *   docker's argv arrays.
+ *   setContainers(list), setImages(tags), setExit(code)}`; `calls()` returns
+ *   the fake docker's argv arrays.
  */
 export async function createEnv({
   config = '', sandboxes = {}, configFiles = {}, files = {}
@@ -95,6 +95,10 @@ export async function createEnv({
     },
     async setContainers(list) {
       await fs.writeFile(path.join(dockerDir, 'containers.json'),
+        JSON.stringify(list));
+    },
+    async setImages(list) {
+      await fs.writeFile(path.join(dockerDir, 'images.json'),
         JSON.stringify(list));
     },
     async setExit(code) {
