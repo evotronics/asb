@@ -274,6 +274,14 @@ test/                 # vitest: unit tests of argv building; CLI tests with a fa
    - **mpm integration.** `asb new widget --mpm <workspace> -r 'widget*'`
      to create a scoped mpm workspace for a sandbox.
    - Mirroring the host workspace path inside the container.
+   - **Git defaults for sandboxes.** With `.git/config` read-only, set
+     `branch.autoSetupMerge=false`, `push.default=current`, and
+     `worktree.useRelativePaths=true` in sandboxes by default, with
+     `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_n`/`GIT_CONFIG_VALUE_n` so they
+     work in any image; and possibly set `extensions.relativeWorktrees`
+     in protected repos on `asb start` when the host git is 2.48 or
+     later. Decide after use; documented for now (README, "Git in a
+     sandbox").
    - Prebuilt (pulled) images without a build context.
 
 ## 10. Migration from the shell version
