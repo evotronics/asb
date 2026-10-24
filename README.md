@@ -398,12 +398,86 @@ protect:              # relative to the workspace; * matches one name
 ```
 
 A read-only `.git/config` makes git commands that write config fail in the
-sandbox (`git remote add`, `git push -u`, `git branch -u`). Set your own
+sandbox; see [Git in a sandbox](#git-in-a-sandbox). Set your own
 `protect` list, for example `protect: [.mpm]`, to loosen this for trusted
 agents. Paths are found when the container starts, so repos cloned later
 are not covered until a restart. A protected path that is a symlink, or a
 protected file with another hard link, stops the start, since a read-only
 mount can't cover it. `asb show` lists what is protected.
+
+### Git in a sandbox
+
+Git saves config by writing `.git/config.lock` and renaming it over
+`.git/config`, which a read-only mount refuses. So in a sandbox these
+fail, because they write a repo's config:
+
+- creating a branch from a remote branch, which sets up tracking:
+  `git worktree add -b NEW PATH origin/main`, `git checkout -b NEW
+  origin/x`, and `git switch x` when it creates `x` from `origin/x`;
+- `git push -u` and `git branch -u`;
+- `git remote add` and `set-url`, `git submodule init` (and
+  `update --init`), and `git config` without `--global`.
+
+Worktrees from a local branch or HEAD, commits, fetch, plain pushes,
+`worktree remove`, and `worktree prune` don't write config, and work.
+
+**Avoid the writes.** Settings in the sandbox's own `~/.gitconfig` (in its
+home, so they only affect that sandbox) stop branches from recording
+tracking, and let a plain `git push` work without an upstream:
+
+```sh
+asb sh widget
+git config --global branch.autoSetupMerge false
+git config --global push.default current
+```
+
+Push with `git push`, or `git push origin BRANCH`, instead of `-u`. For a
+one-off, `git worktree add --no-track` does the same.
+
+**Worktree paths.** Git links a worktree to its repo with absolute paths:
+the worktree's `.git` file says `gitdir: /path/to/repo/.git/worktrees/NAME`,
+and the repo's `.git/worktrees/NAME/gitdir` points back. The workspace is
+`/home/agent/workspace` in the container and somewhere else on the host, so
+a worktree made on one side is broken on the other (`git status` fails in
+it, and `git worktree list` marks it prunable). Worktrees made in a sandbox
+also show up in `asb audit` as `.git` files pointing outside the mounts.
+
+**Use relative worktrees** (git 2.48 or later on the host and in the
+image). Git records a repo that uses them with `extensions.relativeWorktrees`
+in its `.git/config`, which a sandbox can't write, so set it on the host
+once per repo:
+
+```sh
+git -C ~/src/widget config core.repositoryFormatVersion 1
+git -C ~/src/widget config extensions.relativeWorktrees true
+```
+
+Or set `git config --global worktree.useRelativePaths true` on the host:
+your next `git worktree add` in a repo sets the extension there, and
+worktrees you make on the host work in the container too. Either way, then
+in the sandbox:
+
+```sh
+git config --global worktree.useRelativePaths true
+```
+
+Without the extension already set, `git worktree add` in the sandbox then
+fails with "unable to upgrade repository format". To relink existing
+worktrees, run `git worktree repair --relative-paths` in the repo, naming
+the paths of worktrees made on the other side (`git worktree repair
+--relative-paths ~/src/widget/.claude/worktrees/fix`).
+
+Some things to know:
+
+- Git older than 2.48 refuses a repo with the extension set, including the
+  git bundled with some IDEs and GUIs, and Ubuntu 24.04's (2.43). Images
+  not built from asb's `base` need git 2.48 or later too.
+- Only worktrees inside the workspace or a mount can work on both sides.
+
+**Or loosen protection** for a trusted sandbox: a `protect` list without
+`.git/config` and `*/.git/config` lets git in the sandbox write config. It
+also lets the sandbox set `core.fsmonitor` and the like, which would run on
+the host before the next [audit](#audit) notices.
 
 ### Audit
 
