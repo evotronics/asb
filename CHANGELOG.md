@@ -64,6 +64,13 @@
   `.envrc`, `.npmrc`, and `.vscode/tasks.json`. Findings are compared with
   a reviewed baseline (`--accept`); `start`, `stop`, and `run` report
   changes.
+- `doctor` checks the config files, each sandbox's workspace, home, mounts,
+  protected paths, and image, docker, and git, and suggests the git
+  settings that make worktrees and branches work with a read-only
+  `.git/config`: no branch tracking, and relative worktree links (git 2.48
+  or later), so worktrees made in a sandbox also work on the host.
+- `settings.git`: the git command asb runs on the host (for `audit` and
+  `doctor`).
 - Mount checks before a container starts: writable mounts may not cover
   your home directory or asb's config or data directory (so a sandbox
   can't edit its own settings), and mount sources may not go through
