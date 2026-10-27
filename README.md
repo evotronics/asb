@@ -155,6 +155,7 @@ settings:
   # uid: 1000          # default: yours
   # gid: 1000
   # docker: podman     # docker compatible CLI
+  # git: git           # git on the host, for audit and doctor
 defaults:              # applied to every sandbox
   image: dev
   resources: {cpus: 4, memory: 16g}
