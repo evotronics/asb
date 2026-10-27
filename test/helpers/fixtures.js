@@ -44,6 +44,7 @@ export async function writeFiles(dir, files) {
 }
 
 export const FAKE_DOCKER = path.join(import.meta.dirname, 'fake-docker.js');
+export const FAKE_GIT = path.join(import.meta.dirname, 'fake-git.js');
 
 /**
  * Create an isolated environment: a home directory, an asb config

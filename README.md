@@ -61,6 +61,7 @@ asb [global options] <command> [options] [args...]
 | `image new <name>` | Create an image directory (`--from <image>`, `--copy <image>`, `-d`) |
 | `image show [name]` | An image's files, tag, args, and base images |
 | `audit [name]` | Check the sandbox's mounts for things the host would run (`--accept`, `--all`); see [Audit](#audit) |
+| `doctor [names...]` | Check the config, each sandbox's paths, mounts, and image, docker, and git, and suggest fixes; see [Checking your setup](#checking-your-setup) |
 | `build [images...]` | Build images and the asb images they are built from (`--no-bases`, `--no-cache`, `--pull`); default: the current sandbox's image |
 | `config get\|set\|unset\|path\|validate\|edit` | Settings and sandbox defaults in `config.yaml` |
 | `completion bash\|zsh\|fish` | Print a shell completion script |
@@ -73,8 +74,8 @@ asb [global options] <command> [options] [args...]
 | `logs [docker args]` | Container logs (`asb logs -f`) |
 
 Global options: `-s/--sandbox <name>`, `-n/--dry-run`, `-v/--verbose`,
-`--[no-]color`. `ls`, `show`, `image ls`, `image show`, `audit`, and
-`config get` take `--json`.
+`--[no-]color`. `ls`, `show`, `image ls`, `image show`, `audit`, `doctor`,
+and `config get` take `--json`.
 
 **Which sandbox:** `-s <name>` (or a name argument), then `$ASB_SANDBOX`,
 then the sandbox whose workspace, home, or mount source contains the
@@ -463,7 +464,8 @@ git config --global worktree.useRelativePaths true
 ```
 
 Without the extension already set, `git worktree add` in the sandbox then
-fails with "unable to upgrade repository format". To relink existing
+fails with "unable to upgrade repository format" (or "unable to set
+extensions.relativeWorktrees setting"). To relink existing
 worktrees, run `git worktree repair --relative-paths` in the repo, naming
 the paths of worktrees made on the other side (`git worktree repair
 --relative-paths ~/src/widget/.claude/worktrees/fix`).
@@ -474,6 +476,9 @@ Some things to know:
   git bundled with some IDEs and GUIs, and Ubuntu 24.04's (2.43). Images
   not built from asb's `base` need git 2.48 or later too.
 - Only worktrees inside the workspace or a mount can work on both sides.
+
+`asb doctor` checks all of this for each sandbox, and prints the commands to
+run (see [Checking your setup](#checking-your-setup)).
 
 **Or loosen protection** for a trusted sandbox: a `protect` list without
 `.git/config` and `*/.git/config` lets git in the sandbox write config. It
@@ -541,6 +546,54 @@ them.
   by version tag rather than digest, Node.js from NodeSource's install
   script, and the GitHub CLI from its apt repository. The build caches are
   shared by all image builds, so only build Dockerfiles you trust.
+
+## Checking your setup
+
+`asb doctor` checks your setup without changing anything. It marks
+problems (✗), warnings (!), and suggestions (•), and exits 1 if there are
+problems:
+
+- `config.yaml`, every sandbox file, and every image's `image.yaml` are
+  valid;
+- docker is installed and its daemon answers, and each sandbox's image is
+  built;
+- each sandbox's workspace, home, and mount sources exist, its
+  [mounts are safe](#mount-checks), and its protected paths can be
+  protected;
+- the host's git version, and, for repos whose `.git/config` is protected,
+  the git settings from [Git in a sandbox](#git-in-a-sandbox): branch
+  tracking in the sandbox's `~/.gitconfig`, relative worktrees (when git
+  is 2.48 or later) in the repos, the sandbox, and your global config,
+  and worktrees linked with paths from the other side. If the sandbox is
+  running and uses relative worktrees, its git version is checked too.
+
+Suggestions come with the commands to run:
+
+```
+$ asb doctor widget
+Setup
+  ✓ config ~/.config/asb is valid (3 sandboxes, 4 images)
+  ✓ docker 28.5.1
+  ✓ git 2.51.0
+  • worktrees you make on the host link with host paths, which break in sandboxes
+      $ git config --global worktree.useRelativePaths true
+Sandbox widget
+  ✓ workspace ~/sandboxes/widget
+  ✓ home ~/.local/share/asb/homes/widget
+  ✓ mounts are safe
+  ✓ image default (asb-default) is built
+  ✓ 6 protected paths
+  • git records branch tracking in .git/config, which is read-only in the sandbox; set these in its ~/.local/share/asb/homes/widget/.gitconfig
+      $ git config --file /home/me/.local/share/asb/homes/widget/.gitconfig branch.autoSetupMerge false
+      $ git config --file /home/me/.local/share/asb/homes/widget/.gitconfig push.default current
+  • worktrees made in the sandbox link with container paths, which break on the host; enable relative worktrees (git 2.48+ everywhere these repos are used)
+      ~/sandboxes/widget/widget-api
+      ~/sandboxes/widget/widget-ui
+      $ for repo in /home/me/sandboxes/widget/widget-api /home/me/sandboxes/widget/widget-ui; do git -C "$repo" config core.repositoryFormatVersion 1 && git -C "$repo" config extensions.relativeWorktrees true; done
+  • make worktrees with relative paths in the sandbox too
+      $ git config --file /home/me/.local/share/asb/homes/widget/.gitconfig worktree.useRelativePaths true
+4 suggestions.
+```
 
 ## Shell completion
 

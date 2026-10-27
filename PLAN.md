@@ -225,6 +225,8 @@ Global options: `-s, --sandbox <name>`, `-n, --dry-run`, `-v, --verbose`,
 | `run <cmd...>` | One-shot throwaway container |
 | `status [names...]` (`ps`) | Container state of sandboxes |
 | `logs [docker args]` | Container logs |
+| `audit [name]` | Check writable mounts for things the host would run |
+| `doctor [names...]` | Check config, paths, mounts, images, docker, and git; suggest git settings for worktrees |
 | `image ls\|new\|show` | List images; create an image directory (`--from`, `--copy`); show one |
 | `build [images...]` | Build images and their asb base images (`--no-bases`, `--no-cache`, `--pull`); default: the current sandbox's image, else `default` |
 | `config get\|set\|unset\|path\|edit\|validate` | `config.yaml` |
