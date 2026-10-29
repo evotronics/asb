@@ -330,9 +330,21 @@ An **image** is shared by every sandbox that uses it, changes only when you
 rebuild it, and can't be changed from inside a sandbox: put system packages
 and tools you want everywhere there. A sandbox's **home** belongs to that
 sandbox and persists across containers: per-project tools fit there.
-`npm install -g` (the default image sets `NPM_CONFIG_PREFIX` to
-`~/.npm-global`), `uv tool install`, and installer scripts that write to
-`~/.local/bin` all land in the home, and both directories are on `PATH`.
+`npm install -g` (the default image sets npm's prefix to `~/.npm-global`
+in `/usr/etc/npmrc`), `uv tool install`, and installer scripts that write
+to `~/.local/bin` all land in the home, and both directories are on
+`PATH`.
+
+The prefix is set in the system npm's config, not the environment, so it
+works alongside [nvm](https://github.com/nvm-sh/nvm). Each Node version
+nvm installs keeps its own global packages, so install tools you want
+everywhere with the image's Node, and use nvm for testing other versions:
+
+```sh
+nvm exec system npm install -g some-tool
+```
+
+Those tools stay on `PATH` whichever Node is active, and run with it.
 `uvx <tool>` runs a Python tool (or an MCP server) without installing it,
 like `npx`. Ubuntu's system Python refuses `pip install`, even with
 `--user`, so use uv, or a virtualenv made with `uv venv`.

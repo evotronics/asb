@@ -60,8 +60,11 @@ RUN --mount=type=cache,target=/root/.npm \
     npm_config_cache=/root/.npm \
     npm install -g --prefix /usr/local @ast-grep/cli@0.45.3
 
-# `npm install -g` in a sandbox goes to its home mount, as the sandbox user
-ENV NPM_CONFIG_PREFIX=${HOME}/.npm-global
+# `npm install -g` in a sandbox goes to its home mount, as the sandbox user.
+# Set in the system npm's global config rather than NPM_CONFIG_PREFIX, so
+# Node versions from nvm keep their own prefix (nvm refuses that variable).
+RUN mkdir -p /usr/etc \
+    && echo "prefix=${HOME}/.npm-global" > /usr/etc/npmrc
 
 ARG USERNAME=agent
 USER ${USERNAME}
